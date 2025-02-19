@@ -17,3 +17,18 @@ pydantic → Ensures API data is valid and structured
 │── .env                # Environment variables with database login (file content should be: DATABASE_URL=postgresql://user:password@localhost:5432/db_name)
 │── requirements.txt    # Python dependencies
 │── README.md           # Backend documentation
+
+
+Quick Commands:
+
+uvicorn app.main:app --reload
+
+export PATH="/Library/PostgreSQL/17/bin:$PATH"
+
+psql -U postgres
+\l
+\c cs370_db
+\dt
+
+alembic revision --autogenerate -m "update schema"
+alembic upgrade head

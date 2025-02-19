@@ -21,10 +21,10 @@ class Course(Base):
     credit_hours = Column(Integer, nullable=False)
    
     # TODO: Update the properties of these; enforce limited options of reqs and campus?; how to make preqs a list of Course objs?
-    prequisites = Column(String)
+    prerequisites = Column(String)
     requirement_designation = Column(String)
     campus = Column(String)
-    # TODO: add department?
+    # TODO: add department? already in Professor
 
     professor_id = Column(Integer, ForeignKey("professors.id"))
     professor = relationship("Professor", back_populates="courses") # define a bidirectional relationship between courses and professors
