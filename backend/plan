@@ -14,6 +14,6 @@ pydantic → Ensures API data is valid and structured
 │   ├── routes
 │   │   ├── __init__.py # Makes 'routes' a module
 │   │   ├── users.py    # Example user route
-│── .env                # Environment variables (DB credentials)
+│── .env                # Environment variables with database login (file content should be: DATABASE_URL=postgresql://user:password@localhost:5432/db_name)
 │── requirements.txt    # Python dependencies
 │── README.md           # Backend documentation
