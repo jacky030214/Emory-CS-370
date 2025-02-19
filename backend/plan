@@ -1,0 +1,19 @@
+fastapi → Framework for building APIs
+uvicorn → Runs the FastAPI web server
+sqlalchemy → ORM for PostgreSQL database management
+psycopg2-binary → Allows SQLAlchemy to connect to PostgreSQL
+pydantic → Ensures API data is valid and structured
+
+/backend
+│── /app
+│   ├── main.py         # Entry point for FastAPI
+│   ├── database.py     # Database connection setup
+│   ├── models.py       # SQLAlchemy models
+│   ├── schemas.py      # Pydantic schemas (request/response models)
+│   ├── crud.py         # Database operations (CRUD functions)
+│   ├── routes
+│   │   ├── __init__.py # Makes 'routes' a module
+│   │   ├── users.py    # Example user route
+│── .env                # Environment variables (DB credentials)
+│── requirements.txt    # Python dependencies
+│── README.md           # Backend documentation
