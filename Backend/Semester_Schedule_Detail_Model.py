@@ -1,4 +1,6 @@
-class Semester_Schedule:
+from Semester_Schedule_Model import Semester_Schedule
+
+class Semester_Schedule_Detail(Semester_Schedule):
     def __init__(
         self,
         year,
@@ -18,13 +20,12 @@ class Semester_Schedule:
         :param thursday: List of classes scheduled on Thursday.
         :param friday: List of classes scheduled on Friday.
         """
-        self.year = year
-        self.semester = semester
-        self.monday = monday if monday else []
-        self.tuesday = tuesday if tuesday else []
-        self.wednesday = wednesday if wednesday else []
-        self.thursday = thursday if thursday else []
-        self.friday = friday if friday else []
+        super().__init__(year, semester, classes=[])
+        self.monday = monday if monday is not None else []
+        self.tuesday = tuesday if tuesday is not None else []
+        self.wednesday = wednesday if wednesday is not None else []
+        self.thursday = thursday if thursday is not None else []
+        self.friday = friday if friday is not None else []
 
     def to_dict(self):
         """
@@ -47,7 +48,7 @@ class Semester_Schedule:
         Convert a dictionary to a Semester_Schedule object.
         Useful for retrieving from MongoDB and creating a Python object.
         """
-        return Semester_Schedule(
+        return Semester_Schedule_Detail(
             year=data.get("year"),
             semester=data.get("semester"),
             monday=data.get("monday", []),
@@ -59,11 +60,8 @@ class Semester_Schedule:
 
     def __repr__(self):
         return (
-            f"Semester_Schedule(year={self.year}, "
-            f"semester='{self.semester}', "
-            f"monday={self.monday}, "
-            f"tuesday={self.tuesday}, "
-            f"wednesday={self.wednesday}, "
-            f"thursday={self.thursday}, "
-            f"friday={self.friday})"
+            f"Semester_Schedule_Detail(year={self.year}, semester='{self.semester}', "
+            f"monday={self.monday}, tuesday={self.tuesday}, "
+            f"wednesday={self.wednesday}, thursday={self.thursday}, friday={self.friday})"
+        
         )

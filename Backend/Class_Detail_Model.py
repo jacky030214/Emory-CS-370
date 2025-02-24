@@ -6,7 +6,7 @@ class Class_Detail(Class_Model):
     def __init__(
         self,
         class_id,
-        class_number,
+        class_num,         # New variable for the class number
         class_name,
         recurring,
         credit_hours,
@@ -23,30 +23,29 @@ class Class_Detail(Class_Model):
         room=None
     ):
         """
-        Inherit from ClassModel, plus add details about a specific section.
+        Inherit from Class_Model, plus add details about a specific section.
         
-        :param class_id: Inherited from ClassModel
-        :param class_number: Inherited from ClassModel
-        :param class_name: Inherited from ClassModel
-        :param recurring: Inherited from ClassModel
-        :param credit_hours: Inherited from ClassModel
-        :param prereqs: Inherited from ClassModel
-        :param requirement_designation: Inherited from ClassModel
-        :param campus: Inherited from ClassModel
-        :param class_desc: Inherited from ClassModel
-
-        :param section: Specific section identifier (string or int)
-        :param professor: Name of the instructor (string)
-        :param time_slot: Time range (e.g., "09:00-09:50 AM")
-        :param days: Days of the week (e.g., ["Mon", "Wed", "Fri"] or "MWF")
-        :param class_size: The capacity for this section (int)
-        :param offering: "virtual", "inperson", or "hybrid"
-        :param room: The room number or location (string)
+        :param class_id: Inherited from Class_Model.
+        :param class_num: The class number (e.g., "101").
+        :param class_name: Inherited from Class_Model.
+        :param recurring: Inherited from Class_Model.
+        :param credit_hours: Inherited from Class_Model.
+        :param prereqs: Inherited from Class_Model.
+        :param requirement_designation: Inherited from Class_Model.
+        :param campus: Inherited from Class_Model.
+        :param class_desc: Inherited from Class_Model.
+        
+        :param section: Specific section identifier.
+        :param professor: Name of the instructor.
+        :param time_slot: Time range (e.g., "09:00-09:50 AM").
+        :param days: Days of the week (e.g., ["Mon", "Wed", "Fri"]).
+        :param class_size: Capacity for this section.
+        :param offering: "virtual", "inperson", or "hybrid".
+        :param room: Room number or location.
         """
-        # Call the parent constructor first
+        # Call the parent constructor
         super().__init__(
             class_id=class_id,
-            class_number=class_number,
             class_name=class_name,
             recurring=recurring,
             credit_hours=credit_hours,
@@ -56,7 +55,8 @@ class Class_Detail(Class_Model):
             class_desc=class_desc
         )
 
-        # Add subclass-specific attributes
+        # Add the new variable and subclass-specific attributes
+        self.class_num = class_num
         self.section = section
         self.professor = professor
         self.time_slot = time_slot
@@ -71,6 +71,7 @@ class Class_Detail(Class_Model):
         """
         base_dict = super().to_dict()
         base_dict.update({
+            "class_num": self.class_num,
             "section": self.section,
             "professor": self.professor,
             "time_slot": self.time_slot,
@@ -86,10 +87,9 @@ class Class_Detail(Class_Model):
         """
         Build a Class_Detail object from a dictionary, including both parent and child attributes.
         """
-        # Create an instance by passing dictionary items to constructor
         return Class_Detail(
             class_id=data.get("class_id"),
-            class_number=data.get("class_number"),
+            class_num=data.get("class_num"),
             class_name=data.get("class_name"),
             recurring=data.get("recurring"),
             credit_hours=data.get("credit_hours"),
@@ -113,6 +113,7 @@ class Class_Detail(Class_Model):
         parent_repr = super().__repr__()
         return (
             f"{parent_repr[:-1]}, "
+            f"class_num='{self.class_num}', "
             f"section='{self.section}', "
             f"professor='{self.professor}', "
             f"time_slot='{self.time_slot}', "

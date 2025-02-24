@@ -1,7 +1,6 @@
 class Class_Model:
     def __init__(self,
                  class_id,
-                 class_number,
                  class_name,
                  recurring,
                  credit_hours,
@@ -11,7 +10,6 @@ class Class_Model:
                  class_desc=None):
         """
         :param class_id: Unique identifier for the class (string or int)
-        :param class_number: The internal or official class number (string or int)
         :param class_name: Descriptive name/title of the class (string)
         :param recurring: Indicates the recurring pattern (e.g., "every Spring/Fall")
         :param credit_hours: Number of credit hours for the class (int)
@@ -21,7 +19,6 @@ class Class_Model:
         :param class_desc: A textual description of the class (string)
         """
         self.class_id = class_id
-        self.class_number = class_number
         self.class_name = class_name
         self.recurring = recurring
         self.credit_hours = credit_hours
@@ -36,7 +33,6 @@ class Class_Model:
         """
         return {
             "class_id": self.class_id,
-            "class_number": self.class_number,
             "class_name": self.class_name,
             "recurring": self.recurring,
             "credit_hours": self.credit_hours,
@@ -53,7 +49,6 @@ class Class_Model:
         """
         return Class_Model(
             class_id=data.get("class_id"),
-            class_number=data.get("class_number"),
             class_name=data.get("class_name"),
             recurring=data.get("recurring"),
             credit_hours=data.get("credit_hours"),
@@ -66,7 +61,6 @@ class Class_Model:
     def __repr__(self):
         return (
             f"ClassModel(class_id={self.class_id}, "
-            f"class_number={self.class_number}, "
             f"class_name='{self.class_name}', "
             f"recurring='{self.recurring}', "
             f"credit_hours={self.credit_hours}, "
@@ -75,3 +69,6 @@ class Class_Model:
             f"campus='{self.campus}', "
             f"class_desc='{self.class_desc}')"
         )
+        
+    def __str__(self):
+        return f"{self.class_id}: ({self.credit_hours} credits)({self.recurring})"

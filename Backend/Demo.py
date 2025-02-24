@@ -1,6 +1,6 @@
 from Class_Detail_Model import Class_Detail
 from Professor_Model import Professor
-from Semster_Schedule_Model import Semester_Schedule
+from Backend.Semester_Schedule_Model import Semester_Schedule
 
 def main():
     # Create a Professor object

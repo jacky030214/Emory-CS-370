@@ -1,0 +1,4 @@
+major_name,required_courses,elective1,elective2,elective3,elective4,elective5,elective6,elective7
+Bachelor of Arts in Mathematics,Math111; Math112; Math211; Math 221; Math250; CS170 or Math 170,Math200*,Math200*,Math200*,Math200*,Math200*,Math200*,
+Bachelor of Science in Mathematics,Math111; Math112; Math211; **Math250; Math318; Math321; Math411; Math412; Math421; Math422; CS170 or Math170; Phys151; Phys152,Math200*,Math300*,Math300*,,,,
+Bachelor of Science in Applied Mathematics,Math111; Math112; Math211; Math212; Math221 or Math321; Math250; Math315; Math351; CS170 or Math170; Phys151; Phys152,Math318; Math344; Math345; Math346; Math347; Math325; Math361; Math362; Math411; Math412,Math318; Math344; Math345; Math346; Math347; Math325; Math361; Math362; Math411; Math412,Math318; Math344; Math345; Math346; Math347; Math325; Math361; Math362; Math411; Math412,CS171; CS200*,CS171; CS200*,Phys253; Phys361; Phys365; Chem330; Bio330; Chem331; Econ320; Math425; Econ425,
