@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -30,6 +31,12 @@ const darkTheme = createTheme({
 });
 
 const Login_Page = () => {
+  const navigate = useNavigate();
+  
+  const handleLogin = () => {
+    navigate('/dashboard');
+  };
+
   return (
     <ThemeProvider theme={darkTheme}>
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -110,6 +117,7 @@ const Login_Page = () => {
                   <Button
                     fullWidth
                     variant="contained"
+                    onClick={handleLogin}
                     sx={{ 
                       bgcolor: 'rgba(255, 255, 255, 0.1)',
                       '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' }
