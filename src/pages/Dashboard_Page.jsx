@@ -1,108 +1,260 @@
-import React from 'react'
-import { useNavigate } from 'react-router-dom'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Container,
+  Typography,
+  AppBar,
+  Toolbar,
+  Button,
+  Paper,
+  Grid,
+  TextField,
+  Divider,
+  IconButton,
+  Menu,
+  MenuItem,
+  List,
+  ListItem,
+  ThemeProvider,
+  createTheme
+} from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
+import AddIcon from '@mui/icons-material/Add';
+
+// Create dark theme matching Login_Page
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#ff6b00', // Orange color for Flow
+    },
+    background: {
+      default: '#1a1a2e',
+      paper: '#1a1a2e',
+    },
+  },
+});
 
 function Dashboard_Page() {
   const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [major, setMajor] = useState('');
+  const [startingSemester, setStartingSemester] = useState('ex) Fall 2025');
+  const [classes, setClasses] = useState([
+    { id: 1, name: 'Class 1', credits: 3 },
+    { id: 2, name: 'Class 2', credits: 3 },
+    { id: 3, name: 'Class 3', credits: 3 }
+  ]);
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
 
   const handleLogout = () => {
     navigate('/login');
   };
 
-  // 학업 진행도 데이터 예시
-  const progressData = {
-    name: "Andrew",
-    school: "Emory University",
-    year: "Junior",
-    credits: [
-      { semester: "1-1", completed: 18, total: 21 },
-      { semester: "1-2", completed: 19, total: 21 },
-      { semester: "2-1", completed: 21, total: 21 },
-      { semester: "2-2", completed: 18, total: 21 },
-      { semester: "3-1", completed: 15, total: 21 },
-      { semester: "3-2", completed: 0, total: 21 }
-    ]
+  const handleAddClass = () => {
+    const newId = classes.length > 0 ? Math.max(...classes.map(c => c.id)) + 1 : 1;
+    setClasses([...classes, { id: newId, name: `Class ${newId}`, credits: 3 }]);
   };
-
+  
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow-sm">
-        <div className="w-full px-4">
-            <div className="flex h-16"> {/* justify-between 제거 */}
-                <div className="flex items-center">
-                    <button 
-                        onClick={() => navigate('/')}
-                        className="text-2xl font-bold text-blue-600 hover:text-blue-700 transition-colors"
-                    >
-                        DegreeFlow 🚀
-                    </button>
-                </div>
-            <div className="flex items-center ml-auto space-x-4"> {/* ml-auto 추가 */}
-                <button 
-                    onClick={() => navigate('/settings')}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
-                >
-                    Settings
-                </button>
-                <button 
-                    onClick={() => navigate('/profile')}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
-                >
-                    Profile
-                </button>
-                <button 
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
-                >
-                    LOG OUT
-                </button>
-                    </div>
-                </div>
-            </div>
-        </nav>
+    <ThemeProvider theme={darkTheme}>
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        {/* App Bar, top of the page */}
+        <AppBar position="static" color="transparent" elevation={5}>
+          <Toolbar>
+            <Button 
+              color="inherit" 
+              sx={{ 
+                fontSize: '20px', 
+                textTransform: 'none',
+                '& .flow': { color: 'primary.main' }
+              }}
+              onClick={() => navigate('/login')}
+            >
+              Degree<span className="flow">Flow</span>
+            </Button>
+            
+            <Box sx={{ flexGrow: 1 }} />
+            
+            <Button 
+              color="inherit"
+              onClick={() => navigate('/home')}
+              sx={{ marginRight: 2 }}
+            >
+              Home
+            </Button>
+            
+            <Button 
+              color="inherit"
+              onClick={() => navigate('/settings')}
+              sx={{ marginRight: 2 }}
+            >
+              Setting
+            </Button>
+            
+            <IconButton
+              color="inherit"
+              onClick={handleMenuOpen}
+            >
+              <MenuIcon />
+            </IconButton>
+            
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+            >
+              <MenuItem onClick={() => navigate('/profile')}>Profile</MenuItem>
+              <MenuItem onClick={handleLogout}>Log Out</MenuItem>
+            </Menu>
+          </Toolbar>
+        </AppBar>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {/* Student info card */}
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
-          <div className="grid grid-cols-3 gap-6">
-            <div>
-              <h2 className="text-sm font-medium text-gray-500">Name</h2>
-              <p className="mt-1 text-lg font-semibold text-gray-900">{progressData.name}</p>
-            </div>
-            <div>
-              <h2 className="text-sm font-medium text-gray-500">Shcool</h2>
-              <p className="mt-1 text-lg font-semibold text-gray-900">{progressData.school}</p>
-            </div>
-            <div>
-              <h2 className="text-sm font-medium text-gray-500">Year</h2>
-              <p className="mt-1 text-lg font-semibold text-gray-900">{progressData.year}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 학업 진행도 그래프 */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Complete Credit per Semester</h2>
-          <div className="w-full h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={progressData.credits}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+        {/* Main Content */}
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h4" gutterBottom sx={{ 
+              display: 'flex',
+              alignItems: 'center',
+              color: 'white'
+            }}>
+              <MenuIcon sx={{ mr: 1 }} /> College Schedule by Semester
+            </Typography>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, mt: 3 }}>
+              <Typography variant="h6" sx={{ mr: 2, color: 'white' }}>
+                Your Major:
+              </Typography>
+              <TextField 
+                value={major}
+                onChange={(e) => setMajor(e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{ 
+                  width: 200,
+                  input: { color: 'white' },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                    },
+                  }
+                }}
+              />
+              
+              <Typography variant="h6" sx={{ mx: 2, color: 'white' }}>
+                Starting Semester:
+              </Typography>
+              <TextField 
+                value={startingSemester}
+                variant="outlined"
+                size="small"
+                sx={{ 
+                  width: 150,
+                  input: { color: 'white' },
+                  bgcolor: 'primary.main',
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'primary.main',
+                    },
+                  }
+                }}
+              />
+            </Box>
+          </Box>
+          
+          <Divider sx={{ mb: 3, bgcolor: 'rgba(255, 255, 255, 0.12)' }} />
+          
+          <Grid container spacing={3}>
+            {/* Semester course list */}
+            <Grid item xs={12} md={6}>
+              <Paper
+                sx={{
+                  p: 2,
+                  borderRadius: 1,
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)'
+                }}
               >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="semester" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="completed" name="이수 학점" fill="#3B82F6" />
-                <Bar dataKey="total" name="총 학점" fill="#93C5FD" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </main>
-    </div>
-  )
+                <Typography variant="h6" sx={{ color: 'white', mb: 1 }}>
+                  2025 Fall
+                </Typography>
+                <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
+                  (Credit Hours)
+                </Typography>
+                
+                <List>
+                  {classes.map((cls) => (
+                    <ListItem 
+                      key={cls.id}
+                      sx={{ 
+                        p: 1, 
+                        mb: 1, 
+                        bgcolor: 'rgba(255, 255, 255, 0.03)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: 1
+                      }}
+                    >
+                      <Typography sx={{ color: 'white' }}>
+                        {cls.name}
+                      </Typography>
+                    </ListItem>
+                  ))}
+                  <Box 
+                    sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      mt: 2,
+                      color: 'rgba(255, 255, 255, 0.5)'
+                    }}
+                  >
+                    <Typography>⋮</Typography>
+                  </Box>
+                </List>
+              </Paper>
+            </Grid>
+            
+            {/* Required and Elective classes */}
+            <Grid item xs={12} md={6}>
+              <Paper
+                sx={{
+                  p: 2,
+                  borderRadius: 1,
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  height: '100%'
+                }}
+              >
+                <Box sx={{ p: 2, border: '1px dashed rgba(255, 255, 255, 0.3)', mb: 4 }}>
+                  <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>
+                    Required Classes data required
+                  </Typography>
+                  <Box sx={{ height: 80 }} /> {/* Placeholder for content */}
+                </Box>
+                
+                <Box sx={{ p: 2, border: '1px dashed rgba(255, 255, 255, 0.3)' }}>
+                  <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>
+                    Elective Classes data required
+                  </Typography>
+                  <Box sx={{ height: 80 }} /> {/* Placeholder for content */}
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+    </ThemeProvider>
+  );
 }
 
-export default Dashboard_Page
+export default Dashboard_Page;
