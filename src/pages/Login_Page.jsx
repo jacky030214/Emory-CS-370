@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -32,9 +32,33 @@ const darkTheme = createTheme({
 
 const Login_Page = () => {
   const navigate = useNavigate();
-  
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
   const handleLogin = () => {
+    
+    const userInfo = {
+      id: 1,
+      username: email.split('@')[0],
+      email: email
+    };
+    
+    localStorage.setItem('user', JSON.stringify(userInfo));
+    
     navigate('/dashboard');
+  };
+
+  // Added function to handle signup navigation
+  const handleSignup = () => {
+    navigate('/signup');
+  };
+
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+  };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
   };
 
   return (
@@ -102,12 +126,16 @@ const Login_Page = () => {
                   fullWidth
                   label="Email"
                   variant="outlined"
+                  value={email}
+                  onChange={handleEmailChange}
                 />
                 <TextField
                   fullWidth
                   label="Password"
                   type="password"
                   variant="outlined"
+                  value={password}
+                  onChange={handlePasswordChange}
                 />
                 <Stack 
                   direction="row" 
@@ -117,11 +145,11 @@ const Login_Page = () => {
                   <Button
                     fullWidth
                     variant="contained"
-                    onClick={handleLogin}
                     sx={{ 
                       bgcolor: 'rgba(255, 255, 255, 0.1)',
                       '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' }
                     }}
+                    onClick={handleLogin}
                   >
                     Log in
                   </Button>
@@ -132,6 +160,7 @@ const Login_Page = () => {
                       bgcolor: 'rgba(255, 255, 255, 0.1)',
                       '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' }
                     }}
+                    onClick={handleSignup} // Added onClick handler to navigate to signup page
                   >
                     Sign up
                   </Button>
@@ -149,6 +178,7 @@ const Login_Page = () => {
                       bgcolor: 'white',
                       '&:hover': { bgcolor: '#f5f5f5' }
                     }}
+                    onClick={handleLogin}
                   >
                     <Google sx={{ color: '#000' }} />
                   </IconButton>
@@ -157,6 +187,7 @@ const Login_Page = () => {
                       bgcolor: 'white',
                       '&:hover': { bgcolor: '#f5f5f5' }
                     }}
+                    onClick={handleLogin}
                   >
                     <Apple sx={{ color: '#000' }} />
                   </IconButton>
@@ -165,6 +196,7 @@ const Login_Page = () => {
                       bgcolor: 'white',
                       '&:hover': { bgcolor: '#f5f5f5' }
                     }}
+                    onClick={handleLogin}
                   >
                     <Facebook sx={{ color: '#000' }} />
                   </IconButton>
@@ -173,6 +205,7 @@ const Login_Page = () => {
                       bgcolor: 'white',
                       '&:hover': { bgcolor: '#f5f5f5' }
                     }}
+                    onClick={handleLogin}
                   >
                     <GitHub sx={{ color: '#000' }} />
                   </IconButton>
