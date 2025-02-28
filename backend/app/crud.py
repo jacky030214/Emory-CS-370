@@ -1,7 +1,7 @@
 # CRUD stands for Create, Read, Update, and Delete. These are the four basic operations for managing data in a database
 
 from sqlalchemy.orm import Session
-from app import models, schemas
+import models, schemas
 from passlib.context import CryptContext
 
 """

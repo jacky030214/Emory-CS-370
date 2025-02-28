@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from app.routes import users, courses, professors
-from app.database import Base, engine
+from routes import users, courses, professors
+from database import Base, engine
 
 app = FastAPI()
 
