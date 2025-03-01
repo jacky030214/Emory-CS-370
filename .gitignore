@@ -2,5 +2,5 @@ node_modules
 .vscode
 .pytest_cache
 __pycache__
-.env
+backend/.env
 course_data
