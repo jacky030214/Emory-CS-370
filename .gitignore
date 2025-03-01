@@ -1,0 +1,6 @@
+node_modules
+.vscode
+.pytest_cache
+__pycache__
+.env
+course_data
