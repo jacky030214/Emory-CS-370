@@ -41,6 +41,12 @@ for j, prerequisites in enumerate(pqs):
     prerequisites = [prereq for prereq in prerequisites if prereq] # remove empty arrays
 
     prerequisites_str = ""
+    
+    # remove spaces within course codes
+    for i, or_courses in enumerate(prerequisites):
+        for j, course in enumerate(or_courses):
+            prerequisites[i][j] = course.replace(" ", "")
+
     for i, or_courses in enumerate(prerequisites):
         prerequisites_str += " or ".join(or_courses)
         if len(prerequisites) - i > 1:
