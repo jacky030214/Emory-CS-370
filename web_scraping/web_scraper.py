@@ -1,3 +1,5 @@
+# RUN THIS WITH the pytest cmd, optionally with --headed flag to see the browser in action
+
 import re
 import os
 from playwright.sync_api import Page, expect
