@@ -1,10 +1,12 @@
 # RUN THIS WITH the pytest cmd, optionally with --headed flag to see the browser in action
+# or you can run the program as main
 
 import re
 import os
 from playwright.sync_api import Page, expect
 import pandas as pd
 
+# helper function
 def clean_prerequisites(prerequisites: str) -> str:
     """
     A string with prerequisites is cleaned and returned in an appropiate format.
@@ -26,24 +28,73 @@ def clean_prerequisites(prerequisites: str) -> str:
 
     prerequisites = [prereq for prereq in prerequisites if prereq] # remove empty arrays
 
-    # format string according to the required format. Ex: "CS 170 or CS 171; MATH 111"
+    # format string according to the required format. Ex: "CS170 or CS171; MATH111"
+    for i, or_courses in enumerate(prerequisites):
+        for j, course in enumerate(or_courses):
+            prerequisites[i][j] = course.replace(" ", "")
+    
     prerequisites_str = ""
     for i, or_courses in enumerate(prerequisites):
         prerequisites_str += " or ".join(or_courses)
-        if len(prerequisites) - i > 1:
+        if len(prerequisites) - i > 1: # if we are not at the last set of or_courses
             prerequisites_str += "; "
 
     return prerequisites_str
 
+# helper function
+def clean_semesters_offered(semesters_offered: str) -> str:
+    """
+    A string with semesters offered is cleaned and returned in an appropiate format.
+    """
+    if not semesters_offered:
+        return None
+    if semesters_offered.__contains__("Fall") and semesters_offered.__contains__("Spring") and semesters_offered.__contains__("Summer"):
+        return "fall/spring/summer"
+    if semesters_offered.__contains__("Fall") and semesters_offered.__contains__("Spring"):
+        return "fall/spring"
+    if semesters_offered.__contains__("Fall"):
+        return "fall"
+    if semesters_offered.__contains__("Spring"):
+        return "spring"
+    if semesters_offered.__contains__("Summer"):
+        return "summer"
+    return None
+
+
+
+# main scraping function
 def test_scrape_atlas(page: Page):
+    
+    """
+    Adjustable Parameters
+    """
+    # create a dictionary to store all the desired course data
+    course_data = {
+        "class_name": [],
+        "class_id": [],
+        "section": [],
+        "recurring": [],
+        "credit_hours": [],
+        "prereqs": [],
+        "requirement_designation": [],
+        "campus": [],
+        "class_desc": []
+    } # if adjusted, make sure to adjust the csv output below
+    
+    searchword = "" # empty for all courses in selected semester
+    search_semester = "Spring 2025"
+
+    """
+    Web-scraping Begins
+    """
 
     page.goto("https://atlas.emory.edu/")
 
-    # expects page to have an element with a label containing "Keyword".
-    expect(page.get_by_label("Keyword")).to_be_visible()
+    # # expects page to have an element with a label containing "Keyword".
+    # expect(page.get_by_label("Keyword")).to_be_visible()
 
-    page.get_by_label("Keyword").fill("CS")
-    page.select_option("select#crit-srcdb", "Spring 2025") # term dropdown
+    page.get_by_label("Keyword").fill(searchword)
+    page.select_option("select#crit-srcdb", search_semester)
 
     page.get_by_role("button", name="SEARCH").click()
     page.wait_for_timeout(1000)
@@ -67,8 +118,8 @@ def test_scrape_atlas(page: Page):
             row.click(force=True) # skip actionability checks (see https://playwright.dev/python/docs/actionability)
             page.wait_for_timeout(500)
 
-            with open(f"course_data/course_{i}_sec_{j}.html", "w") as f:
-                f.write(page.content())
+            # with open(f"web_scraping/course_data/course_{i}_sec_{j}.html", "w") as f:
+            #     f.write(page.content())
 
             # print("-----------------")
             # print(page.locator("div.panel.panel--2x.panel--kind-details.panel--visible").text_content()) # all the data that we need
@@ -125,6 +176,7 @@ def test_scrape_atlas(page: Page):
             enrollment_status = enrollment_status.replace("Enrollment Status: ", "") if enrollment_status else None
             instruction_method = instruction_method.replace("Instruction Method: ", "") if instruction_method else None
             semesters_offered = semesters_offered.replace("Typically Offered: ", "") if semesters_offered else None
+            semesters_offered = clean_semesters_offered(semesters_offered) if semesters_offered else None
             requirement_designation = requirement_designation.replace("Requirement Designation: ", "") if requirement_designation else None
             requirement_designation = re.sub(r"[^\w\s]+", "", requirement_designation) if requirement_designation else None # remove symbols like asteriks
             dates = dates.replace("Dates: ", "") if dates else None
@@ -134,35 +186,34 @@ def test_scrape_atlas(page: Page):
             campus = campus.replace("Campus: ", "").split("@")[0].strip() if campus else None
             campus = "EM" if campus == "ATL" else campus
             campus = "OX" if campus == "OXF" else campus
+            course_description = course_description.replace("\n", " ") if course_description else None
+            course_code = course_code.replace(" ", "") if course_code else None
 
-            print(course_code)
-            print(course_crn)
-            print(course_section)
-            print(course_title)
-            print(credit_hours)
-            print(seats)
-            print(grading_mode)
-            print(enrollment_status)
-            print(instruction_method)
-            print(semesters_offered)
-            print(requirement_designation)
-            print(dates)
-            print(course_description)
-            print(prerequisites)
-            print(instructor_name)
-            print(instructor_email)
-            print(meeting_time)
-            print(meeting_location)
-            print(final_exam)
-            print(class_type)
-            print(campus)
-            print("\n----------------\n")
-            
-            if i == 2:
-                exit()
+            # append to course data dictionary
+            # adjust this based on desired csv output
+            course_data["class_name"].append(course_title)
+            course_data["class_id"].append(course_code)
+            course_data["section"].append(course_section)
+            course_data["recurring"].append(semesters_offered)
+            course_data["credit_hours"].append(credit_hours)
+            course_data["prereqs"].append(prerequisites)
+            course_data["requirement_designation"].append(requirement_designation)
+            course_data["campus"].append(campus)
+            course_data["class_desc"].append(course_description)
 
+    # save a csv
+    df = pd.DataFrame(course_data)
+    search_semester = search_semester.replace(" ", "_").lower()
+    searchword = "all" if searchword == "" else searchword.replace(" ", "_").lower()
+    df.to_csv(f"course_data/{searchword}_{search_semester}_courses.csv", index=False)
 
+# if run without pytest
+if __name__ == "__main__":
+    from playwright.sync_api import sync_playwright
+    
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context()
+        page = context.new_page()
 
-
-
-
+        test_scrape_atlas(page)
