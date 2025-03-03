@@ -6,3 +6,4 @@ backend/.env
 *.html
 *.log
 *.csv
+.DS_Store
