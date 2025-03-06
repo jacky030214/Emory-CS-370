@@ -1,30 +1,402 @@
-// src/App.jsx
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
-import Login_Page from "./pages/Login_Page.jsx"
-import Signup_Page from "./pages/Signup_Page.jsx"  // 회원가입 페이지 import 추가
-import Dashboard_Page from "./pages/Dashboard_Page.jsx"
-// Course pages import
-import Courses_Page from "./pages/Courses_Page.jsx"
-import CourseDetail_Page from "./pages/CourseDetail_Page.jsx"
-import CourseCreate_Page from "./pages/CourseCreate_Page.jsx"
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { 
+  CssBaseline, 
+  Button, 
+  AppBar, 
+  Toolbar, 
+  Box, 
+  IconButton, 
+  Avatar, 
+  Menu, 
+  MenuItem, 
+  Divider, 
+  ListItemIcon,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText
+} from '@mui/material';
+import { 
+  Menu as MenuIcon, 
+  Dashboard as DashboardIcon, 
+  School as SchoolIcon,
+  Person as PersonIcon,
+  Logout as LogoutIcon,
+  Settings as SettingsIcon
+} from '@mui/icons-material';
 
-import "./App.css"
+import Dashboard from './pages/Dashboard';
+import LoginPage from './pages/Login_Page';
 
-function App() {
+// Create theme for consistent styling
+const theme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#ff6b00', // Orange color for branding
+    },
+    secondary: {
+      main: '#03a9f4', // Light blue for secondary actions
+    },
+    background: {
+      default: '#1a1a2e',
+      paper: '#1a1a2e',
+    },
+  },
+  typography: {
+    fontFamily: "'Roboto', 'Helvetica', 'Arial', sans-serif",
+    h4: {
+      fontWeight: 600,
+    },
+    h6: {
+      fontWeight: 500,
+    },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
+    },
+  },
+});
+
+// Protected route component (temporarily bypassing authentication)
+const ProtectedRoute = ({ children }) => {
+  // Temporarily disabled authentication check for development
+  // const isAuthenticated = localStorage.getItem('user') !== null;
+  const isAuthenticated = true; // Always allow access
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
+// NavMenu component for the drawer and header
+const NavMenu = ({ mobileView = false, onClose = null }) => {
+  const navigate = useNavigate();
+  
+  const handleNavigation = (path) => {
+    navigate(path);
+    if (onClose) onClose();
+  };
+  
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login_Page />} />
-        <Route path="/signup" element={<Signup_Page />} />  
-        <Route path="/dashboard" element={<Dashboard_Page />} />
-        {/* Courses */}
-        <Route path="/courses" element={<Courses_Page />} />
-        <Route path="/courses/new" element={<CourseCreate_Page />} />
-        <Route path="/courses/:courseId" element={<CourseDetail_Page />} />
-        <Route path="/" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </Router>
-  )
-}
+    <List>
+      <ListItem disablePadding>
+        <ListItemButton onClick={() => handleNavigation('/dashboard')}>
+          <ListItemIcon>
+            <DashboardIcon />
+          </ListItemIcon>
+          <ListItemText primary="Dashboard" />
+        </ListItemButton>
+      </ListItem>
+      <ListItem disablePadding>
+        <ListItemButton onClick={() => handleNavigation('/courses')}>
+          <ListItemIcon>
+            <SchoolIcon />
+          </ListItemIcon>
+          <ListItemText primary="Courses" />
+        </ListItemButton>
+      </ListItem>
+    </List>
+  );
+};
 
-export default App
+// Main App component
+const App = () => {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+  
+  // Check if user is logged in on app load
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        // Handle invalid stored user data
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
+  
+  // Handle drawer toggle
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+  
+  // Handle profile menu open
+  const handleProfileMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+  
+  // Handle profile menu close
+  const handleProfileMenuClose = () => {
+    setAnchorEl(null);
+  };
+  
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    handleProfileMenuClose();
+    // Use navigation instead of direct window.location manipulation
+    window.location.href = '/login'; // Simple approach for logout
+  };
+  
+  // Drawer width
+  const drawerWidth = 240;
+  
+  // Drawer content
+  const drawer = (
+    <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
+      <Box sx={{ my: 2 }}>
+        <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Button 
+            color="inherit" 
+            sx={{ 
+              fontSize: '20px', 
+              textTransform: 'none',
+              '& .flow': { color: 'primary.main' }
+            }}
+          >
+            Degree<span className="flow">Flow</span>
+          </Button>
+        </Link>
+      </Box>
+      <Divider />
+      <NavMenu mobileView={true} onClose={handleDrawerToggle} />
+    </Box>
+  );
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+          {/* App Bar */}
+          <AppBar position="sticky" color="default" elevation={1}>
+            <Toolbar>
+              {user && (
+                <IconButton
+                  color="inherit"
+                  aria-label="open drawer"
+                  edge="start"
+                  onClick={handleDrawerToggle}
+                  sx={{ mr: 2, display: { sm: 'none' } }}
+                >
+                  <MenuIcon />
+                </IconButton>
+              )}
+              
+              <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+                <Button 
+                  color="inherit" 
+                  sx={{ 
+                    fontSize: { xs: '18px', sm: '24px' }, 
+                    textTransform: 'none',
+                    '& .flow': { color: 'primary.main' }
+                  }}
+                >
+                  Degree<span className="flow">Flow</span>
+                </Button>
+              </Link>
+              
+              <Box sx={{ flexGrow: 1 }} />
+              
+              {user ? (
+                <>
+                  <Box sx={{ display: { xs: 'none', sm: 'flex' } }}>
+                    <Button 
+                      color="inherit" 
+                      component={Link} 
+                      to="/dashboard" 
+                      startIcon={<DashboardIcon />}
+                    >
+                      Dashboard
+                    </Button>
+                    <Button 
+                      color="inherit" 
+                      component={Link} 
+                      to="/courses" 
+                      startIcon={<SchoolIcon />}
+                    >
+                      Courses
+                    </Button>
+                  </Box>
+                  
+                  <IconButton
+                    onClick={handleProfileMenuOpen}
+                    size="small"
+                    sx={{ ml: 2 }}
+                    aria-controls={open ? 'account-menu' : undefined}
+                    aria-haspopup="true"
+                    aria-expanded={open ? 'true' : undefined}
+                  >
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                      {user.username ? user.username[0].toUpperCase() : 'U'}
+                    </Avatar>
+                  </IconButton>
+                  
+                  <Menu
+                    anchorEl={anchorEl}
+                    id="account-menu"
+                    open={open}
+                    onClose={handleProfileMenuClose}
+                    onClick={handleProfileMenuClose}
+                    PaperProps={{
+                      elevation: 0,
+                      sx: {
+                        overflow: 'visible',
+                        filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                        mt: 1.5,
+                        '& .MuiAvatar-root': {
+                          width: 32,
+                          height: 32,
+                          ml: -0.5,
+                          mr: 1,
+                        },
+                      },
+                    }}
+                    transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                    anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                  >
+                    <MenuItem component={Link} to="/profile">
+                      <ListItemIcon>
+                        <PersonIcon fontSize="small" />
+                      </ListItemIcon>
+                      Profile
+                    </MenuItem>
+                    <MenuItem component={Link} to="/settings">
+                      <ListItemIcon>
+                        <SettingsIcon fontSize="small" />
+                      </ListItemIcon>
+                      Settings
+                    </MenuItem>
+                    <Divider />
+                    <MenuItem onClick={handleLogout}>
+                      <ListItemIcon>
+                        <LogoutIcon fontSize="small" />
+                      </ListItemIcon>
+                      Logout
+                    </MenuItem>
+                  </Menu>
+                </>
+              ) : (
+                <Button 
+                  color="primary" 
+                  variant="contained" 
+                  component={Link} 
+                  to="/login"
+                >
+                  Login
+                </Button>
+              )}
+            </Toolbar>
+          </AppBar>
+          
+          {/* Responsive drawer for mobile navigation */}
+          <Box component="nav">
+            <Drawer
+              variant="temporary"
+              open={mobileOpen}
+              onClose={handleDrawerToggle}
+              ModalProps={{
+                keepMounted: true, // Better mobile performance
+              }}
+              sx={{
+                display: { xs: 'block', sm: 'none' },
+                '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+              }}
+            >
+              {drawer}
+            </Drawer>
+          </Box>
+
+          {/* Main content */}
+          <Box component="main" sx={{ flexGrow: 1 }}>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<LoginPage />} />
+              
+              {/* Protected routes */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              {/* Future routes would be added here */}
+              <Route path="/courses" element={
+                <ProtectedRoute>
+                  <Box p={4} textAlign="center">
+                    Courses page coming soon.
+                  </Box>
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <Box p={4} textAlign="center">
+                    Profile page coming soon.
+                  </Box>
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <Box p={4} textAlign="center">
+                    Settings page coming soon.
+                  </Box>
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </Box>
+
+          {/* Footer */}
+          <Box 
+            component="footer" 
+            sx={{ 
+              py: 2, 
+              bgcolor: 'rgba(0, 0, 0, 0.2)', 
+              textAlign: 'center',
+              mt: 'auto'
+            }}
+          >
+            <Box sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+              &copy; {new Date().getFullYear()} DegreeFlow University Management System
+            </Box>
+          </Box>
+        </Box>
+      </Router>
+    </ThemeProvider>
+  );
+};
+
+export default App;
