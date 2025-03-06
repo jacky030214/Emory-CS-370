@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   Box,
   Button,
@@ -10,13 +11,15 @@ import {
   Toolbar,
   Container,
   Paper,
-  Stack
+  Stack,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { Google, Apple, Facebook, GitHub } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 
-// Create dark theme
+// Create dark theme for consistency
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',
@@ -34,31 +37,73 @@ const Login_Page = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  // API base URL
+  const API_URL = 'http://127.0.0.1:8000';
 
-  const handleLogin = () => {
-    
-    const userInfo = {
-      id: 1,
-      username: email.split('@')[0],
-      email: email
-    };
-    
-    localStorage.setItem('user', JSON.stringify(userInfo));
-    
-    navigate('/dashboard');
+  // Handle login with the backend API
+  const handleLogin = async () => {
+    // Basic validation
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Make API call to login endpoint
+      const response = await axios.post(`${API_URL}/users/login`, {
+        email: email,
+        password: password
+      });
+      
+      // Store user info in localStorage
+      const userInfo = response.data;
+      localStorage.setItem('user', JSON.stringify(userInfo));
+      
+      // Redirect to dashboard
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Login failed:', err);
+      
+      if (err.response && err.response.status === 401) {
+        setError('Invalid email or password');
+      } else {
+        setError('An error occurred during login. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Added function to handle signup navigation
+  // Navigate to signup page
   const handleSignup = () => {
     navigate('/signup');
   };
 
-  const handleEmailChange = (e) => {
-    setEmail(e.target.value);
-  };
-
-  const handlePasswordChange = (e) => {
-    setPassword(e.target.value);
+  // Handle social login (currently just mocks the login)
+  const handleSocialLogin = (provider) => {
+    setLoading(true);
+    
+    // In a real app, this would integrate with the social provider's OAuth
+    console.log(`Logging in with ${provider}`);
+    
+    // Mock successful login
+    setTimeout(() => {
+      const userInfo = {
+        id: 1,
+        username: 'user',
+        email: 'user@example.com',
+        provider: provider
+      };
+      
+      localStorage.setItem('user', JSON.stringify(userInfo));
+      navigate('/dashboard');
+    }, 1000);
   };
 
   return (
@@ -121,13 +166,20 @@ const Login_Page = () => {
                 borderRadius: 2
               }}
             >
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
+              
               <Stack spacing={3}>
                 <TextField
                   fullWidth
                   label="Email"
                   variant="outlined"
                   value={email}
-                  onChange={handleEmailChange}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
                 />
                 <TextField
                   fullWidth
@@ -135,7 +187,8 @@ const Login_Page = () => {
                   type="password"
                   variant="outlined"
                   value={password}
-                  onChange={handlePasswordChange}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
                 />
                 <Stack 
                   direction="row" 
@@ -150,8 +203,9 @@ const Login_Page = () => {
                       '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' }
                     }}
                     onClick={handleLogin}
+                    disabled={loading}
                   >
-                    Log in
+                    {loading ? <CircularProgress size={24} /> : 'Log in'}
                   </Button>
                   <Button
                     fullWidth
@@ -160,25 +214,30 @@ const Login_Page = () => {
                       bgcolor: 'rgba(255, 255, 255, 0.1)',
                       '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' }
                     }}
-                    onClick={handleSignup} // Added onClick handler to navigate to signup page
+                    onClick={handleSignup}
+                    disabled={loading}
                   >
                     Sign up
                   </Button>
                 </Stack>
 
                 {/* Social Login Buttons */}
+                <Typography variant="body2" align="center" sx={{ mt: 2, mb: 1 }}>
+                  Or continue with
+                </Typography>
+                
                 <Stack 
                   direction="row" 
                   spacing={2} 
                   justifyContent="center"
-                  sx={{ mt: 2 }}
                 >
                   <IconButton 
                     sx={{ 
                       bgcolor: 'white',
                       '&:hover': { bgcolor: '#f5f5f5' }
                     }}
-                    onClick={handleLogin}
+                    onClick={() => handleSocialLogin('google')}
+                    disabled={loading}
                   >
                     <Google sx={{ color: '#000' }} />
                   </IconButton>
@@ -187,7 +246,8 @@ const Login_Page = () => {
                       bgcolor: 'white',
                       '&:hover': { bgcolor: '#f5f5f5' }
                     }}
-                    onClick={handleLogin}
+                    onClick={() => handleSocialLogin('apple')}
+                    disabled={loading}
                   >
                     <Apple sx={{ color: '#000' }} />
                   </IconButton>
@@ -196,7 +256,8 @@ const Login_Page = () => {
                       bgcolor: 'white',
                       '&:hover': { bgcolor: '#f5f5f5' }
                     }}
-                    onClick={handleLogin}
+                    onClick={() => handleSocialLogin('facebook')}
+                    disabled={loading}
                   >
                     <Facebook sx={{ color: '#000' }} />
                   </IconButton>
@@ -205,7 +266,8 @@ const Login_Page = () => {
                       bgcolor: 'white',
                       '&:hover': { bgcolor: '#f5f5f5' }
                     }}
-                    onClick={handleLogin}
+                    onClick={() => handleSocialLogin('github')}
+                    disabled={loading}
                   >
                     <GitHub sx={{ color: '#000' }} />
                   </IconButton>
