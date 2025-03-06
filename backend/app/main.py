@@ -4,8 +4,18 @@ from database import Base, engine
 from Functions.Generate_Semester_Schedule_byMajor import generate_full_schedule, convert_schedule_to_obj
 from Functions.Get_Class_byID import get_class_by_id
 from Functions.Get_Major_Req_byName import get_major_requirements_by_name
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  
+    allow_credentials=True,
+    allow_methods=["*"],  
+    allow_headers=["*"], 
+)
 
 @app.get("/")
 def read_root():
