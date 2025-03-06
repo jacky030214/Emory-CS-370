@@ -5,7 +5,7 @@ from Functions.Generate_Semester_Schedule_byMajor import generate_full_schedule,
 
 router = APIRouter()
 
-@router.get("/get semester schedule by major name")
+@router.get("/get_semester_schedule_by_major_name")
 def get_Schedule(major_name: str, startingSem: str = "Fall" , startingYear: int = 0):
     # e.g. input major name: "Bachelor of Arts in Mathematics"
     full_schedule = generate_full_schedule(major_name=major_name, num_semesters=8, min_credits=0, max_credits=18, startingSemester=startingSem)
