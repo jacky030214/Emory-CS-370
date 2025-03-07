@@ -1,12 +1,127 @@
-#root {
-  width: 100%;
-  margin: 0 auto;
+/* App.css */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
   padding: 0;
-  text-align: center;
 }
 
 body {
-  margin: 0;
-  min-width: 320px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: #f5f5f5;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+}
+
+/* Header styles */
+.app-header {
+  background-color: #2c3e50;
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.app-header h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.app-header nav {
+  flex: 1;
+  margin: 0 2rem;
+}
+
+.app-header nav ul {
+  display: flex;
+  list-style: none;
+  justify-content: center;
+}
+
+.app-header nav ul li {
+  margin: 0 1rem;
+}
+
+.app-header nav ul li a {
+  color: #ecf0f1;
+  text-decoration: none;
+  font-size: 1rem;
+  padding: 0.5rem 0;
+  transition: color 0.3s;
+  position: relative;
+}
+
+.app-header nav ul li a:hover {
+  color: #3498db;
+}
+
+.app-header nav ul li a::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: #3498db;
+  transition: width 0.3s;
+}
+
+.app-header nav ul li a:hover::after {
+  width: 100%;
+}
+
+.profile-section button {
+  background-color: transparent;
+  border: 1px solid #3498db;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.profile-section button:hover {
+  background-color: #3498db;
+}
+
+/* Main content */
+main {
+  flex: 1;
+  width: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column;
+    padding: 1rem;
+  }
+  
+  .app-header nav {
+    margin: 1rem 0;
+    width: 100%;
+  }
+  
+  .app-header nav ul {
+    justify-content: space-between;
+  }
+  
+  .app-header nav ul li {
+    margin: 0 0.5rem;
+  }
+  
+  .profile-section {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1rem;
+  }
 }
