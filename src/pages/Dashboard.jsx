@@ -54,23 +54,17 @@ const Dashboard = () => {
   useEffect(() => {
     // Always load sample data for development
     setCompletedCourses([
-      { id: 101, code: 'CS101', title: 'Introduction to Programming' },
-      { id: 102, code: 'MATH101', title: 'Calculus I' }
+      { 
+        id: 170, 
+        code: 'CS170', 
+        title: 'Introduction to Programming'
+      },
+      { 
+        id: 111, 
+        code: 'MATH111', 
+        title: 'Calculus I'
+      }
     ]);
-    
-    // Commented out login check for development
-    /*
-    const user = localStorage.getItem('user');
-    if (!user) {
-      navigate('/login');
-    } else {
-      // In a real app, you'd fetch the user's completed courses from the backend
-      setCompletedCourses([
-        { id: 101, code: 'CS101', title: 'Introduction to Programming' },
-        { id: 102, code: 'MATH101', title: 'Calculus I' }
-      ]);
-    }
-    */
   }, []);
 
   // Fetch major requirements when a major is selected
@@ -94,10 +88,54 @@ const Dashboard = () => {
         
         // For demo purposes, populate with dummy data when API fails
         setRequiredCourses([
-          { id: 101, code: 'CS101', title: 'Introduction to Programming' },
-          { id: 201, code: 'CS201', title: 'Data Structures' },
-          { id: 301, code: 'CS301', title: 'Algorithms' },
-          { id: 401, code: 'CS401', title: 'Database Systems' }
+          { 
+            id: 170, 
+            code: 'CS170', 
+            title: 'Introduction To Computer Science I',
+            description: 'First course in computer science programming sequence.',
+            credits: 4,
+            schedule: { days: ['Tue', 'Thu'], time: '11:00 AM' }
+          },
+          { 
+            id: 171, 
+            code: 'CS171', 
+            title: 'Introduction to Computer Science II',
+            description: 'Second course in computer science programming sequence.',
+            credits: 4,
+            schedule: { days: ['Mon', 'Wed'], time: '1:00 PM' }
+          },
+          { 
+            id: 190, 
+            code: 'CS190', 
+            title: 'Fresh Seminar: Computer Science',
+            description: 'Seminar focusing on AI impact in education.',
+            credits: 1,
+            schedule: { days: ['Fri'], time: '10:00 AM' }
+          },
+          { 
+            id: 211, 
+            code: 'CS211', 
+            title: 'Introduction to Artificial Intelligence',
+            description: 'Basic concepts and techniques in artificial intelligence.',
+            credits: 3,
+            schedule: { days: ['Mon', 'Wed'], time: '11:00 AM' }
+          },
+          { 
+            id: 224, 
+            code: 'CS224', 
+            title: 'Foundations of Computer Science',
+            description: 'Mathematical foundations of computer science.',
+            credits: 3,
+            schedule: { days: ['Tue', 'Thu'], time: '9:00 AM' }
+          },
+          { 
+            id: 253, 
+            code: 'CS253', 
+            title: 'Data Structures and Algorithms',
+            description: 'Fundamental data structures and algorithm analysis.',
+            credits: 4,
+            schedule: { days: ['Tue', 'Thu'], time: '2:00 PM' }
+          }
         ]);
       } finally {
         setLoading(false);
@@ -129,36 +167,36 @@ const Dashboard = () => {
         // For demo purposes, populate with dummy data when API fails
         setAvailableCourses([
           {
-            id: 201,
-            code: 'CS201',
-            title: 'Data Structures',
-            description: 'Introduction to data structures and algorithms analysis.',
-            credits: 3,
-            schedule: { days: ['Mon', 'Wed'], time: '10:00 AM' }
-          },
-          {
-            id: 301,
-            code: 'CS301',
-            title: 'Algorithms',
-            description: 'Design and analysis of computer algorithms.',
+            id: 171,
+            code: 'CS171',
+            title: 'Introduction to Computer Science II',
+            description: 'Second course in computer science programming sequence.',
             credits: 4,
-            schedule: { days: ['Tue', 'Thu'], time: '1:00 PM' }
+            schedule: { days: ['Mon', 'Wed'], time: '1:00 PM' }
           },
           {
-            id: 401,
-            code: 'CS401',
-            title: 'Database Systems',
-            description: 'Introduction to database design and implementation.',
+            id: 211,
+            code: 'CS211',
+            title: 'Introduction to Artificial Intelligence',
+            description: 'Basic concepts and techniques in artificial intelligence.',
             credits: 3,
-            schedule: { days: ['Mon', 'Wed'], time: '2:00 PM' }
+            schedule: { days: ['Mon', 'Wed'], time: '11:00 AM' }
           },
           {
-            id: 501,
-            code: 'CS501',
-            title: 'Operating Systems',
-            description: 'Principles of operating systems design.',
+            id: 224,
+            code: 'CS224',
+            title: 'Foundations of Computer Science',
+            description: 'Mathematical foundations of computer science.',
+            credits: 3,
+            schedule: { days: ['Tue', 'Thu'], time: '9:00 AM' }
+          },
+          {
+            id: 253,
+            code: 'CS253',
+            title: 'Data Structures and Algorithms',
+            description: 'Fundamental data structures and algorithm analysis.',
             credits: 4,
-            schedule: { days: ['Tue', 'Thu'], time: '10:00 AM' }
+            schedule: { days: ['Tue', 'Thu'], time: '2:00 PM' }
           }
         ]);
       } finally {
@@ -171,15 +209,32 @@ const Dashboard = () => {
 
   // Generate course recommendations when required courses or available courses change
   useEffect(() => {
-    if (!requiredCourses.length || !availableCourses.length) return;
+    // 디버깅용 콘솔 로그
+    console.log("Recommendation useEffect triggered");
+    console.log("Required courses length:", requiredCourses.length);
+    console.log("Available courses length:", availableCourses.length);
+    
+    // 중요 변경: 더 이상 requiredCourses와 availableCourses 길이 검사에 의존하지 않음
+    // 이 경우 어느 한쪽이 빈 배열이라도 진행할 수 있음
+    if (selectedMajor === '') return;
 
     // Improved time conflict check with actual time comparison
     const hasTimeConflict = (course, recommendedList) => {
       if (!avoidTimeConflicts) return false;
       
+      // 일정 정보가 없는 경우 충돌 없음으로 처리
+      if (!course.schedule || !course.schedule.time || !course.schedule.days) {
+        return false;
+      }
+      
       // Convert time strings to comparable values (minutes since midnight)
       const parseTime = (timeStr) => {
-        const [hours, minutes] = timeStr.match(/(\d+):(\d+)/).slice(1, 3);
+        if (!timeStr) return 0;
+        
+        const match = timeStr.match(/(\d+):(\d+)/);
+        if (!match) return 0;
+        
+        const [hours, minutes] = match.slice(1, 3);
         const isPM = timeStr.includes('PM') && hours !== '12';
         const isMidnight = timeStr.includes('AM') && hours === '12';
         return (isMidnight ? 0 : (isPM ? parseInt(hours) + 12 : parseInt(hours))) * 60 + parseInt(minutes);
@@ -190,6 +245,11 @@ const Dashboard = () => {
       const courseEnd = courseStart + 90;
       
       for (const recommendedCourse of recommendedList) {
+        // Check if the recommended course has schedule info
+        if (!recommendedCourse.schedule || !recommendedCourse.schedule.time || !recommendedCourse.schedule.days) {
+          continue;
+        }
+        
         // Check if days overlap
         const daysOverlap = course.schedule.days.some(day => 
           recommendedCourse.schedule.days.includes(day)
@@ -214,6 +274,7 @@ const Dashboard = () => {
     const generateRecommendations = () => {
       // Get IDs of completed courses
       const completedIds = completedCourses.map(course => course.id);
+      console.log("Completed course IDs:", completedIds);
       
       // Find courses that match requirements and are available this semester
       let recommended = [];
@@ -222,18 +283,23 @@ const Dashboard = () => {
       if (requiredOnly) {
         // Get required course IDs
         const requiredIds = requiredCourses.map(course => course.id);
+        console.log("Required course IDs:", requiredIds);
         
         // Filter available courses to only include required ones
-        recommended = availableCourses.filter(course => 
-          requiredIds.includes(course.id) && 
-          !completedIds.includes(course.id)
-        );
+        recommended = availableCourses.filter(course => {
+          const isRequired = requiredIds.includes(course.id);
+          const isCompleted = completedIds.includes(course.id);
+          console.log(`Course ${course.code}: isRequired=${isRequired}, isCompleted=${isCompleted}`);
+          return isRequired && !isCompleted;
+        });
       } else {
         // Include all available courses that haven't been completed
         recommended = availableCourses.filter(course => 
           !completedIds.includes(course.id)
         );
       }
+      
+      console.log("Initial recommended courses:", recommended.map(c => c.code));
       
       // Filter out courses with time conflicts
       if (avoidTimeConflicts) {
@@ -249,17 +315,20 @@ const Dashboard = () => {
       }
       
       // Sort courses by credits (prioritize higher credit courses)
-      recommended.sort((a, b) => b.credits - a.credits);
+      recommended.sort((a, b) => (b.credits || 0) - (a.credits || 0));
       
+      console.log("Final recommended courses:", recommended.map(c => c.code));
       setRecommendedCourses(recommended);
     };
 
     generateRecommendations();
-  }, [requiredCourses, availableCourses, completedCourses, avoidTimeConflicts, requiredOnly]);
+  }, [requiredCourses, availableCourses, completedCourses, avoidTimeConflicts, requiredOnly, selectedMajor]);
 
   // Handle major selection
   const handleMajorChange = (event) => {
-    setSelectedMajor(event.target.value);
+    const major = event.target.value;
+    console.log("Selected major:", major);
+    setSelectedMajor(major);
   };
 
   // View course details
@@ -405,25 +474,29 @@ const Dashboard = () => {
                         </Typography>
                         
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                          {course.description}
+                          {course.description || 'No description available.'}
                         </Typography>
                         
                         <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                          <Chip 
-                            icon={<ClassIcon />} 
-                            label={`${course.credits} credits`} 
-                            size="small" 
-                            color="primary" 
-                            variant="outlined"
-                          />
+                          {course.credits && (
+                            <Chip 
+                              icon={<ClassIcon />} 
+                              label={`${course.credits} credits`} 
+                              size="small" 
+                              color="primary" 
+                              variant="outlined"
+                            />
+                          )}
                           
-                          <Chip 
-                            icon={<AccessTimeIcon />} 
-                            label={`${course.schedule.days.join(', ')} at ${course.schedule.time}`} 
-                            size="small" 
-                            color="secondary" 
-                            variant="outlined"
-                          />
+                          {course.schedule && course.schedule.days && (
+                            <Chip 
+                              icon={<AccessTimeIcon />} 
+                              label={`${course.schedule.days.join(', ')} at ${course.schedule.time}`} 
+                              size="small" 
+                              color="secondary" 
+                              variant="outlined"
+                            />
+                          )}
                           
                           {requiredCourses.some(req => req.id === course.id) && (
                             <Chip 
