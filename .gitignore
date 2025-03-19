@@ -6,3 +6,4 @@ backend/.env
 *.html
 *.log
 .DS_Store
+web_scraping/course_data
