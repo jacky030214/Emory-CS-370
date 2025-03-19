@@ -22,7 +22,7 @@ def read_root():
     return {"message": "Welcome to the API"}
 
 # Create the database tables
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 # Include routes
 app.include_router(users.router, prefix="/users", tags=["users"])
