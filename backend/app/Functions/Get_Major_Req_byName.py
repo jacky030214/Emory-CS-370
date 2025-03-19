@@ -1,3 +1,6 @@
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from pymongo import MongoClient
 from Models.Major_Req_Model import MajorRequirement
 from pprint import pprint

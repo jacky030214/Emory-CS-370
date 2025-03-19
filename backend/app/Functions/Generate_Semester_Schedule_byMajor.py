@@ -1,3 +1,6 @@
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from pymongo import MongoClient
 #from Models.Major_Req_Model import MajorRequirement  # Your MajorRequirement model with from_dict() method
 from Models.Semester_Schedule_Model import Semester_Schedule  # Your simplified Semester_Schedule_Model class
