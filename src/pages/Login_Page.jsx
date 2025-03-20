@@ -55,10 +55,10 @@ const Login_Page = () => {
       setLoading(true);
       setError('');
       
-      // Make API call to login endpoint
+      // 수정: FastAPI users 라우트에 맞게 로그인 엔드포인트 수정
       const response = await axios.post(`${API_URL}/users/login`, {
         email: email,
-        password: password
+        input_pass: password  // 수정: FastAPI 백엔드의 파라미터명(input_pass)에 맞게 변경
       });
       
       // Store user info in localStorage
@@ -70,8 +70,15 @@ const Login_Page = () => {
     } catch (err) {
       console.error('Login failed:', err);
       
-      if (err.response && err.response.status === 401) {
-        setError('Invalid email or password');
+      if (err.response) {
+        // 수정: FastAPI 오류 응답 처리
+        if (err.response.status === 401) {
+          setError('Invalid password');
+        } else if (err.response.status === 404) {
+          setError('User not found with this email');
+        } else {
+          setError(`Error: ${err.response.data.detail || 'Login failed'}`);
+        }
       } else {
         setError('An error occurred during login. Please try again.');
       }

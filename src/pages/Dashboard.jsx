@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -32,6 +31,9 @@ import ClassIcon from '@mui/icons-material/Class';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 
+// Import the API services
+import { CourseAPI, MajorAPI } from '../services/api';
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -47,9 +49,6 @@ const Dashboard = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
-  // ✅ Correct FastAPI Base URL
-  const API_URL = 'http://127.0.0.1:8000';
-
   // Fetch available majors from the backend
   useEffect(() => {
     const fetchMajors = async () => {
@@ -57,11 +56,8 @@ const Dashboard = () => {
         setLoading(true);
         setError('');
         
-        const response = await axios.get(`${API_URL}/majors`);
-        
-        // Assuming the response returns an array of major objects
-        // If the structure is different, adjust accordingly
-        setMajors(response.data);
+        const data = await MajorAPI.getAllMajors();
+        setMajors(data);
       } catch (err) {
         console.error('Error fetching majors:', err);
         setError('Failed to fetch majors list');
@@ -83,7 +79,7 @@ const Dashboard = () => {
     ]);
   }, []);
 
-  // ✅ Fetch Major Requirements (Fixed Endpoint & Params)
+  // Fetch Major Requirements
   useEffect(() => {
     if (!selectedMajor) return;
 
@@ -92,11 +88,8 @@ const Dashboard = () => {
         setLoading(true);
         setError('');
         
-        const response = await axios.get(`${API_URL}/get_major_requirement_by_major_name`, {
-          params: { major: selectedMajor }
-        });
-
-        setRequiredCourses(response.data);
+        const data = await MajorAPI.getMajorRequirementsByName(selectedMajor);
+        setRequiredCourses(data);
       } catch (err) {
         console.error('Error fetching requirements:', err);
         setError('Failed to fetch major requirements');
@@ -108,7 +101,7 @@ const Dashboard = () => {
     fetchRequirements();
   }, [selectedMajor]);
 
-  // ✅ Fetch Semester Schedule (Fixed Endpoint & Params)
+  // Fetch Semester Schedule
   useEffect(() => {
     if (!selectedMajor) return;
 
@@ -117,11 +110,8 @@ const Dashboard = () => {
         setLoading(true);
         setError('');
 
-        const response = await axios.get(`${API_URL}/get_semester_schedule_by_major_name`, {
-          params: { major: selectedMajor }
-        });
-
-        setAvailableCourses(response.data);
+        const data = await MajorAPI.getSemesterScheduleByName(selectedMajor);
+        setAvailableCourses(data);
       } catch (err) {
         console.error('Error fetching schedule:', err);
         setError('Failed to fetch semester schedule');
@@ -133,14 +123,14 @@ const Dashboard = () => {
     fetchSchedule();
   }, [selectedMajor]);
 
-  // ✅ Fetch Course Details (Correct API Call)
+  // View Course Details
   const viewCourseDetails = async (courseId) => {
     try {
       setLoading(true);
       
-      const response = await axios.get(`${API_URL}/courses/${courseId}`);
+      const data = await CourseAPI.getCourseById(courseId);
       
-      console.log('Course details:', response.data);
+      console.log('Course details:', data);
       setSnackbarMessage(`Course details loaded for ${courseId}`);
       setSnackbarOpen(true);
       
