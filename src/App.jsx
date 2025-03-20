@@ -30,6 +30,16 @@ import {
 
 import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/Login_Page';
+import axios from 'axios';
+
+const API_URL = 'http://127.0.0.1:8000';
+
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 // Create theme for consistent styling
 const theme = createTheme({
@@ -80,11 +90,9 @@ const theme = createTheme({
   },
 });
 
-// Protected route component (temporarily bypassing authentication)
+// Protected route component
 const ProtectedRoute = ({ children }) => {
-  // Temporarily disabled authentication check for development
-  // const isAuthenticated = localStorage.getItem('user') !== null;
-  const isAuthenticated = true; // Always allow access
+  const isAuthenticated = localStorage.getItem('user') !== null;
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -118,6 +126,14 @@ const NavMenu = ({ mobileView = false, onClose = null }) => {
             <SchoolIcon />
           </ListItemIcon>
           <ListItemText primary="Courses" />
+        </ListItemButton>
+      </ListItem>
+      <ListItem disablePadding>
+        <ListItemButton onClick={() => handleNavigation('/schedule')}>
+          <ListItemIcon>
+            <SchoolIcon />
+          </ListItemIcon>
+          <ListItemText primary="Schedule" />
         </ListItemButton>
       </ListItem>
     </List>
@@ -247,6 +263,14 @@ const App = () => {
                     >
                       Courses
                     </Button>
+                    <Button 
+                      color="inherit" 
+                      component={Link} 
+                      to="/schedule" 
+                      startIcon={<SchoolIcon />}
+                    >
+                      Schedule
+                    </Button>
                   </Box>
                   
                   <IconButton
@@ -258,7 +282,7 @@ const App = () => {
                     aria-expanded={open ? 'true' : undefined}
                   >
                     <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                      {user.username ? user.username[0].toUpperCase() : 'U'}
+                      {user.username ? user.username[0].toUpperCase() : user.email ? user.email[0].toUpperCase() : 'U'}
                     </Avatar>
                   </IconButton>
                   
@@ -354,11 +378,26 @@ const App = () => {
                   <Dashboard />
                 </ProtectedRoute>
               } />
+              
+              <Route path="/schedule" element={
+                <ProtectedRoute>
+                  <Box p={4}>
+                    <Typography variant="h4" gutterBottom>
+                      Semester Schedule
+                    </Typography>
+                    <SchedulePage />
+                  </Box>
+                </ProtectedRoute>
+              } />
+              
               {/* Future routes would be added here */}
               <Route path="/courses" element={
                 <ProtectedRoute>
                   <Box p={4} textAlign="center">
-                    Courses page coming soon.
+                    <Typography variant="h4" gutterBottom>
+                      Available Courses
+                    </Typography>
+                    <CourseListPage />
                   </Box>
                 </ProtectedRoute>
               } />
@@ -396,6 +435,75 @@ const App = () => {
         </Box>
       </Router>
     </ThemeProvider>
+  );
+};
+
+const SchedulePage = () => {
+  const [majorName, setMajorName] = useState("Bachelor of Arts in Mathematics");
+  const [scheduleData, setScheduleData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get(`/get_semester_schedule_by_major_name?major_name=${majorName}&startingSem=Fall&startingYear=2023`);
+        setScheduleData(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching schedule:", err);
+        setError("Failed to load schedule data");
+        setLoading(false);
+      }
+    };
+
+    fetchSchedule();
+  }, [majorName]);
+
+  if (loading) return <div>Loading schedule...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <div>
+      {Array.isArray(scheduleData) ? (
+        scheduleData.map((semester, index) => (
+          <Box key={index} sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+            <Typography variant="h6">
+              {semester.semester} {semester.year} - {semester.total_credit_hours} Credits
+            </Typography>
+            {semester.classes && semester.classes.length > 0 ? (
+              <Box sx={{ mt: 2 }}>
+                {semester.classes.map((course, courseIndex) => (
+                  <Box key={courseIndex} sx={{ mb: 1, p: 1, borderLeft: '3px solid', borderColor: 'primary.main' }}>
+                    <Typography variant="subtitle1">
+                      {course.class_name} ({course.class_id})
+                    </Typography>
+                    <Typography variant="body2">
+                      {course.credit_hours} credits | {course.professor || 'TBA'}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body2">No classes for this semester</Typography>
+            )}
+          </Box>
+        ))
+      ) : (
+        <Typography>No schedule data available</Typography>
+      )}
+    </div>
+  );
+};
+
+const CourseListPage = () => {
+  return (
+    <div>
+      <Typography variant="body1">
+        Course list will be displayed here. This would fetch data from the courses endpoints.
+      </Typography>
+    </div>
   );
 };
 
