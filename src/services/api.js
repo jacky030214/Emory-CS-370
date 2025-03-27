@@ -95,10 +95,14 @@ export const MajorAPI = {
   },
   
   // Get semester schedule by major name
-  getSemesterScheduleByName: async (majorName) => {
+  getSemesterScheduleByName: async (majorName, startingSem = 'Fall', startingYear = '2024') => {
     try {
       const response = await api.get('/get_semester_schedule_by_major_name', {
-        params: { major: majorName }
+        params: { 
+          major_name: majorName,
+          startingSem: startingSem,
+          startingYear: startingYear
+        }
       });
       return response.data;
     } catch (error) {
