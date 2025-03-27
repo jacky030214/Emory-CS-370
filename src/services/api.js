@@ -59,9 +59,8 @@ export const CourseAPI = {
   // Get class by class ID (from course_mongodb)
   getClassByClassId: async (classId) => {
     try {
-      const response = await api.get('/get_class_by_class_id', {
-        params: { class_id: classId }
-      });
+      // Using the exact endpoint format shown in your screenshots
+      const response = await api.get(`/get_class_by_class_id?class_id=${encodeURIComponent(classId)}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching class with ID ${classId}:`, error);
@@ -221,4 +220,6 @@ export const ProfessorAPI = {
       throw error;
     }
   }
-};
+}; 
+
+export { api };

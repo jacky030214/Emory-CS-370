@@ -17,7 +17,8 @@ import {
   List,
   ListItem,
   ListItemButton,
-  ListItemText
+  ListItemText,
+  Typography
 } from '@mui/material';
 import { 
   Menu as MenuIcon, 

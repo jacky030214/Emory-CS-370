@@ -1,3 +1,4 @@
+//wed mar 26 updated
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -7,144 +8,63 @@ import {
   Paper,
   Grid,
   FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  TextField,
+  Button,
   CircularProgress,
   Alert,
   Card,
   CardContent,
   CardActions,
-  Button,
   Chip,
   Stack,
   Divider,
-  List,
-  ListItem,
-  ListItemText,
-  Switch,
-  FormControlLabel,
   Snackbar
 } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ClassIcon from '@mui/icons-material/Class';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import WarningIcon from '@mui/icons-material/Warning';
+import SearchIcon from '@mui/icons-material/Search';
 
-// Import the API services
-import { CourseAPI, MajorAPI } from '../services/api';
+// Import the CourseAPI service instead of direct api
+import { CourseAPI } from '../services/api';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [majors, setMajors] = useState([]);
-  const [selectedMajor, setSelectedMajor] = useState('');
-  const [recommendedCourses, setRecommendedCourses] = useState([]);
-  const [requiredCourses, setRequiredCourses] = useState([]);
-  const [availableCourses, setAvailableCourses] = useState([]);
-  const [completedCourses, setCompletedCourses] = useState([]);
-  const [avoidTimeConflicts, setAvoidTimeConflicts] = useState(true);
-  const [requiredOnly, setRequiredOnly] = useState(true);
+  const [classId, setClassId] = useState('');
+  const [classDetails, setClassDetails] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
-  // Fetch available majors from the backend
-  useEffect(() => {
-    const fetchMajors = async () => {
-      try {
-        setLoading(true);
-        setError('');
-        
-        const data = await MajorAPI.getAllMajors();
-        setMajors(data);
-      } catch (err) {
-        console.error('Error fetching majors:', err);
-        setError('Failed to fetch majors list');
-        // Fall back to hardcoded majors if API call fails
-        setMajors(['Computer Science', 'Engineering', 'Business', 'Mathematics']);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Handle class search
+  const handleClassSearch = async () => {
+    if (!classId.trim()) {
+      setError('Please enter a class ID');
+      return;
+    }
 
-    fetchMajors();
-  }, []);
-
-  // Load sample completed courses for development
-  useEffect(() => {
-    setCompletedCourses([
-      { id: 170, code: 'CS170', title: 'Introduction to Programming' },
-      { id: 111, code: 'MATH111', title: 'Calculus I' }
-    ]);
-  }, []);
-
-  // Fetch Major Requirements
-  useEffect(() => {
-    if (!selectedMajor) return;
-
-    const fetchRequirements = async () => {
-      try {
-        setLoading(true);
-        setError('');
-        
-        const data = await MajorAPI.getMajorRequirementsByName(selectedMajor);
-        setRequiredCourses(data);
-      } catch (err) {
-        console.error('Error fetching requirements:', err);
-        setError('Failed to fetch major requirements');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRequirements();
-  }, [selectedMajor]);
-
-  // Fetch Semester Schedule
-  useEffect(() => {
-    if (!selectedMajor) return;
-
-    const fetchSchedule = async () => {
-      try {
-        setLoading(true);
-        setError('');
-
-        const data = await MajorAPI.getSemesterScheduleByName(selectedMajor);
-        setAvailableCourses(data);
-      } catch (err) {
-        console.error('Error fetching schedule:', err);
-        setError('Failed to fetch semester schedule');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSchedule();
-  }, [selectedMajor]);
-
-  // View Course Details
-  const viewCourseDetails = async (courseId) => {
     try {
       setLoading(true);
+      setError('');
       
-      const data = await CourseAPI.getCourseById(courseId);
+      // Use CourseAPI instead of direct api
+      const data = await CourseAPI.getClassByClassId(classId);
+      setClassDetails(data);
       
-      console.log('Course details:', data);
-      setSnackbarMessage(`Course details loaded for ${courseId}`);
+      setSnackbarMessage(`Class ${classId} details loaded successfully`);
       setSnackbarOpen(true);
-      
     } catch (err) {
-      console.error('Error fetching course details:', err);
-      setError('Failed to fetch course details');
+      console.error('Error fetching class details:', err);
+      setError('Failed to fetch class details. Please check the class ID and try again.');
+      setClassDetails(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle Major Selection
-  const handleMajorChange = (event) => {
-    setSelectedMajor(event.target.value);
+  // Handle input change
+  const handleInputChange = (event) => {
+    setClassId(event.target.value);
   };
 
   return (
@@ -160,88 +80,119 @@ const Dashboard = () => {
       )}
       
       <Grid container spacing={3}>
-        {/* Filters */}
+        {/* Search Form */}
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 2, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
-              Filters
+              Class Search
             </Typography>
             
             <FormControl fullWidth margin="normal">
-              <InputLabel id="major-select-label">Major</InputLabel>
-              <Select
-                labelId="major-select-label"
-                value={selectedMajor}
-                label="Major"
-                onChange={handleMajorChange}
+              <TextField
+                label="Class ID"
+                value={classId}
+                onChange={handleInputChange}
+                placeholder="e.g. Math111"
                 disabled={loading}
-              >
-                <MenuItem value="">
-                  <em>Select a major</em>
-                </MenuItem>
-                {majors.map((major) => (
-                  <MenuItem key={typeof major === 'object' ? major.id : major} value={typeof major === 'object' ? major.name : major}>
-                    {typeof major === 'object' ? major.name : major}
-                  </MenuItem>
-                ))}
-              </Select>
+                fullWidth
+                variant="outlined"
+                helperText="Enter a class ID to search"
+              />
             </FormControl>
+            
+            <Box sx={{ mt: 2 }}>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={handleClassSearch}
+                disabled={loading}
+                startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
+                fullWidth
+              >
+                {loading ? 'Searching...' : 'Search'}
+              </Button>
+            </Box>
           </Paper>
         </Grid>
         
-        {/* Recommendations */}
+        {/* Class Details */}
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 2, minHeight: 240 }}>
             <Typography variant="h6" gutterBottom>
-              Recommended Courses {selectedMajor && `for ${selectedMajor}`}
+              Class Details
             </Typography>
             
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
                 <CircularProgress />
               </Box>
-            ) : requiredCourses.length > 0 ? (
-              <Grid container spacing={2}>
-                {requiredCourses.map((course) => (
-                  <Grid item xs={12} key={course.id}>
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Typography variant="h6">
-                          {course.code}: {course.title}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {course.description || 'No description available.'}
-                        </Typography>
-                        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+            ) : classDetails ? (
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="h5" gutterBottom>
+                    {classDetails.class_id}: {classDetails.class_name}
+                  </Typography>
+                  
+                  <Typography variant="body1" paragraph>
+                    {classDetails.class_desc || 'No description available.'}
+                  </Typography>
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2">Details:</Typography>
+                      <Box sx={{ mt: 1 }}>
+                        <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
                           <Chip 
                             icon={<ClassIcon />} 
-                            label={`${course.credits} credits`} 
+                            label={`${classDetails.credit_hours} credits`} 
                             size="small" 
                             color="primary" 
                             variant="outlined"
                           />
-                          <Chip 
-                            icon={<AccessTimeIcon />} 
-                            label={`${course.schedule?.days?.join(', ')} at ${course.schedule?.time}`} 
-                            size="small" 
-                            color="secondary" 
-                            variant="outlined"
-                          />
                         </Stack>
-                      </CardContent>
-                      <CardActions>
-                        <Button size="small" onClick={() => viewCourseDetails(course.id)}>
-                          View Details
-                        </Button>
-                      </CardActions>
-                    </Card>
+                        <Typography variant="body2">
+                          <strong>Offered:</strong> {classDetails.recurring}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Designation:</strong> {classDetails.requirement_designation}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Campus:</strong> {classDetails.campus}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2">Prerequisites:</Typography>
+                      <Box sx={{ mt: 1 }}>
+                        {classDetails.prereqs && classDetails.prereqs.length > 0 ? (
+                          classDetails.prereqs.map((prereq, index) => (
+                            <Chip 
+                              key={index}
+                              label={prereq} 
+                              size="small" 
+                              sx={{ mr: 1, mb: 1 }}
+                            />
+                          ))
+                        ) : (
+                          <Typography variant="body2">No prerequisites</Typography>
+                        )}
+                      </Box>
+                    </Grid>
                   </Grid>
-                ))}
-              </Grid>
+                </CardContent>
+                <CardActions>
+                  <Button size="small" color="primary">
+                    Add to Schedule
+                  </Button>
+                </CardActions>
+              </Card>
             ) : (
               <Box sx={{ p: 3, textAlign: 'center' }}>
                 <Typography>
-                  Select a major to see course recommendations.
+                  Enter a class ID and click Search to view class details.
                 </Typography>
               </Box>
             )}
