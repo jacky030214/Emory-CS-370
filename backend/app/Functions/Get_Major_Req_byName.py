@@ -104,9 +104,9 @@ def get_major_requirements_by_name(major_name, uri="mongodb://localhost:27017/",
                 processed_electives = []
                 value = doc[key].strip() if isinstance(doc[key], str) else ""
                 if value:
-                    if value == "Math200*":
+                    if value == "MATH200*":
                         classes_collection = db["Class"]
-                        regex = re.compile(r'^Math(\d+)$', re.IGNORECASE)
+                        regex = re.compile(r'^MATH(\d+)$', re.IGNORECASE)
                         matching = []
                         for class_doc in classes_collection.find({"class_id": regex}):
                             m = regex.match(class_doc["class_id"])
@@ -116,9 +116,9 @@ def get_major_requirements_by_name(major_name, uri="mongodb://localhost:27017/",
                             processed_electives.append(matching)
                         else:
                             processed_electives.append(value)
-                    elif value == "Math300*":
+                    elif value == "MATH300*":
                         classes_collection = db["Class"]
-                        regex = re.compile(r'^Math(\d+)$', re.IGNORECASE)
+                        regex = re.compile(r'^MATH(\d+)$', re.IGNORECASE)
                         matching = []
                         for class_doc in classes_collection.find({"class_id": regex}):
                             m = regex.match(class_doc["class_id"])
@@ -128,9 +128,9 @@ def get_major_requirements_by_name(major_name, uri="mongodb://localhost:27017/",
                             processed_electives.append(matching)
                         else:
                             processed_electives.append(value)
-                    elif value == "Math400*":
+                    elif value == "MATH400*":
                         classes_collection = db["Class"]
-                        regex = re.compile(r'^Math(\d+)$', re.IGNORECASE)
+                        regex = re.compile(r'^MATH(\d+)$', re.IGNORECASE)
                         matching = []
                         for class_doc in classes_collection.find({"class_id": regex}):
                             m = regex.match(class_doc["class_id"])
@@ -139,7 +139,19 @@ def get_major_requirements_by_name(major_name, uri="mongodb://localhost:27017/",
                         if matching:
                             processed_electives.append(matching)
                         else:
-                            processed_electives.append(value)        
+                            processed_electives.append(value)
+                    elif value == "CS200*":
+                        classes_collection = db["Class"]
+                        regex = re.compile(r'^CS(\d+)$', re.IGNORECASE)
+                        matching = []
+                        for class_doc in classes_collection.find({"class_id": regex}):
+                            m = regex.match(class_doc["class_id"])
+                            if m and int(m.group(1)) >= 200:
+                                matching.append(class_doc["class_id"])
+                        if matching:
+                            processed_electives.append(matching)
+                        else:
+                            processed_electives.append(value)
                     elif " or " in value:
                         alternatives = [alt.strip() for alt in value.split(" or ") if alt.strip()]
                         processed_electives.append(alternatives)

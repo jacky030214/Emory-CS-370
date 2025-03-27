@@ -1,5 +1,5 @@
 class User_Logins:
-    def __init__(self, email, password):
+    def __init__(self, email, password, username):
         """
         Initialize a User_Logins object.
 
@@ -9,6 +9,7 @@ class User_Logins:
         """
         self.email = email
         self.password = password
+        self.username = username
 
     def to_dict(self):
         """
@@ -16,7 +17,8 @@ class User_Logins:
         """
         return {
             "email": self.email,
-            "password": self.password
+            "password": self.password,
+            "username": self.username
         }
 
     @staticmethod
@@ -26,8 +28,9 @@ class User_Logins:
         """
         return User_Logins(
             email=data.get("email"),
-            password=data.get("password")
+            password=data.get("password"),
+            username=data.get("username")
         )
 
     def __repr__(self):
-        return f"User_Logins(email='{self.email}', password='***')"
+        return f"User_Logins(email='{self.email}', password='***', usernamer='{self.username}')"

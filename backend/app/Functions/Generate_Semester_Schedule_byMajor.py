@@ -128,7 +128,7 @@ def generate_full_schedule(major_name, num_semesters, min_credits=12, max_credit
                     if get_class_by_id(elective_id, uri, db_name):
                         if elective_id not in elective_classes_id:
                             if elective_id not in required_classes_id:
-                                if elective_id == 'Math275' or elective_id == 'Math276':
+                                if elective_id == 'MATH275' or elective_id == 'MATH276':
                                     continue
                                 elective_classes_id.append(elective_id)
                                 break
@@ -345,7 +345,268 @@ def convert_schedule_to_obj(schedule, startYear, startsFall):
     return semester_schedule_objects
         
 
+def add_GER_course(schedule, isBulePlan = False, isEM = True):
+    """
+    Add GER classes into exsiting schedule 
+    
+    :param schedule: List of semesters, where each semester is a list of class objects.
+    :param isBluePlan: To identify if the student is taking Blue plan (default is False, taking Gold plan).
+    :param isEM: To identify if the student is taking all courses in EM, False if if OX continuess.
+    :return: List of semesters, where each semester is a list of class objects.
+    """
+    
+    """
+    EM Gold plan: 
+    Area 1: First Year Seminar (first 2 semester, 1 course)
+    Area 2: First Year Writing (first 2 semester, 1 course)
+    Area 3: Continuing Writing (3 courses)
+    Area 4: Math and Quantitative Reasoning (1 course)
+    Area 5: Science, Nature, Technology (2 courses, 1 with lab)
+    Area 6: History, Society, Cultures (2 courses)
+    Area 7: Humanities, Arts, Language / Humanities, Arts, Performance (4 courses, 2 sequential courses in a single foreign language, 2 HAP or HAL (must 1 above 100 level for HAL) or 1 HAP 1 HAL)
+    Area 8: Personal Health (1 one-hour course)
+    Area 9: Physical Education and Dance (2 one-hour courses, one must be Principles of Physical Fitness course)
+    Area 10: Race and Ethnicity (1 course, can be combined with other GER)
+    
+    """
+    
+    """
+    EM Blue plan: 
+    end of first year: ECS101, HLTH100, PE(PED) (1 course), First Year Seminar(FS)(1 course), First Year Writing(FW)(1 course)
+    end of second year: Humanities and Arts(HA)(1 course), Natural Science(NS)(1 course), Quantitative Reasoning(QR)(1 course), Social Science(SS)(1 course)
+    end of third year: Intercultural Communication(IC)(2 courses), Race and Ethnicity(ETHN)(1 course)
+    end of college: Continuing Commnuication(CC)(2 courses), Experience and Application(XA)(1 course)
+    """
+    if (isBulePlan):
+        return("isBlue")
+    else:
+        # Connect to MongoDB
+        uri="mongodb://localhost:27017/", 
+        db_name="my_database"
+        client = MongoClient(uri)
+        db = client[db_name]
+        
+        # for sem in semester_schedules:
+        #     for cls in sem.classes:
+                
+        #         print(cls)    
+            
+        
+        # Assume that the collection is called "Class"
+        classes_collection = db["Class"]
+        
+        
+        # Create List for GER classes
+        GER_class_obj = []
+        GER_class_id = []
+        
+        # Area 1 and Area 10
+        # Retrieve the document to find requirement_designation:
+        doc = classes_collection.find({"requirement_designation": "First Year Seminar with Race  Ethnicity"})
+        while(True):
+            if doc:
+                doc = next(doc)
+                # Convert the document into a Course object using the model's from_dict method
+                class_obj = Class_Model.from_dict(doc)
+                class_id = class_obj.class_id
+                if class_id not in GER_class_id:
+                    GER_class_obj.append(class_obj)
+                    GER_class_id.append(class_id)
+                    break
+                else:
+                    next(doc)
+        
+                
+        # Area 2
+        # Retrieve the document to find requirement_designation:
+        doc = classes_collection.find({"requirement_designation": "FirstYear Writing"})
+        while(True):
+            if doc:
+                doc = next(doc)
+                # Convert the document into a Course object using the model's from_dict method
+                class_obj = Class_Model.from_dict(doc)
+                class_id = class_obj.class_id
+                if class_id not in GER_class_id:
+                    GER_class_obj.append(class_obj)
+                    GER_class_id.append(class_id)
+                    break
+                else:
+                    next(doc)
+                    
+        # Area 3:
+        count = 0
+        skip = 0
+        while(True):
+            doc = classes_collection.find({"requirement_designation": {"$regex": "writing", "$options": "i"}}).skip(count+skip)
+            if doc:
+                doc = next(doc)
+                # Convert the document into a Course object using the model's from_dict method
+                class_obj = Class_Model.from_dict(doc)
+                class_id = class_obj.class_id
+                if class_id not in GER_class_id:
+                    GER_class_obj.append(class_obj)
+                    GER_class_id.append(class_id)
+                    count +=1
+                    
+                    if count >= 3:
+                        break
+                else:
+                    skip +=1
+                    
+        # Area 4:
+        count = 0
+        skip = 0
+        while(True):
+            doc = classes_collection.find({"requirement_designation": {"$regex": "Quantitative Reasoning", "$options": "i"}}).skip(count+skip)
+            if doc:
+                doc = next(doc)
+                # Convert the document into a Course object using the model's from_dict method
+                class_obj = Class_Model.from_dict(doc)
+                class_id = class_obj.class_id
+                if class_id not in GER_class_id:
+                    GER_class_obj.append(class_obj)
+                    GER_class_id.append(class_id)
+                    count +=1
+                    
+                    if count >= 1:
+                        break
+                else:
+                    skip +=1
+                    
+        # Area 5:
+        count = 0
+        skip = 0
+        while(True):
+            doc = classes_collection.find({"requirement_designation": {"$regex": "lab", "$options": "i"}}).skip(count+skip)
+            if doc:
+                doc = next(doc)
+                # Convert the document into a Course object using the model's from_dict method
+                class_obj = Class_Model.from_dict(doc)
+                class_id = class_obj.class_id
+                if class_id not in GER_class_id:
+                    GER_class_obj.append(class_obj)
+                    GER_class_id.append(class_id)
+                    count +=1
+                    
+                    if count >= 1:
+                        break
+                else:
+                    skip +=1
+        count = 0
+        skip = 0
+        while(True):
+            doc = classes_collection.find({"requirement_designation": {"$regex": "Science Nature", "$options": "i"}}).skip(count+skip)
+            if doc:
+                doc = next(doc)
+                # Convert the document into a Course object using the model's from_dict method
+                class_obj = Class_Model.from_dict(doc)
+                class_id = class_obj.class_id
+                if class_id not in GER_class_id:
+                    GER_class_obj.append(class_obj)
+                    GER_class_id.append(class_id)
+                    count +=1
+                    
+                    if count >= 2:
+                        break
+                else:
+                    skip +=1
+                    
+                    
+        # Area 6:
+        count = 0
+        skip = 0
+        while(True):
+            doc = classes_collection.find({"requirement_designation": {"$regex": "History Society Cultures", "$options": "i"}}).skip(count+skip)
+            if doc:
+                doc = next(doc)
+                # Convert the document into a Course object using the model's from_dict method
+                class_obj = Class_Model.from_dict(doc)
+                class_id = class_obj.class_id
+                if class_id not in GER_class_id:
+                    GER_class_obj.append(class_obj)
+                    GER_class_id.append(class_id)
+                    count +=1
+                    
+                    if count >= 2:
+                        break
+                else:
+                    skip +=1   
+                    
+                    
+        # Area 7:
+        count = 0
+        skip = 0
+        while(True):
+            doc = classes_collection.find({"requirement_designation": {"$regex": "Intercultural Communication", "$options": "i"}}).skip(count+skip)
+            if doc:
+                doc = next(doc)
+                # Convert the document into a Course object using the model's from_dict method
+                class_obj = Class_Model.from_dict(doc)
+                class_id = class_obj.class_id
+                if class_id not in GER_class_id:
+                    GER_class_obj.append(class_obj)
+                    GER_class_id.append(class_id)
+                    count +=1
+                    
+                    if count >= 2:
+                        break
+                else:
+                    skip +=1
+        count = 0
+        skip = 0
+        while(True):
+            doc = classes_collection.find({"requirement_designation": {"$regex": "Humanities Arts Performance", "$options": "i"}}).skip(count+skip)
+            if doc:
+                doc = next(doc)
+                # Convert the document into a Course object using the model's from_dict method
+                class_obj = Class_Model.from_dict(doc)
+                class_id = class_obj.class_id
+                if class_id not in GER_class_id:
+                    GER_class_obj.append(class_obj)
+                    GER_class_id.append(class_id)
+                    count +=1
+                    
+                    if count >= 2:
+                        break
+                else:
+                    skip +=1
+                    
+                    
+        # Area 9:
+        count = 0
+        skip = 0
+        while(True):
+            doc = classes_collection.find({"requirement_designation": {"$regex": "Physical Education", "$options": "i"}}).skip(count+skip)
+            if doc:
+                doc = next(doc)
+                # Convert the document into a Course object using the model's from_dict method
+                class_obj = Class_Model.from_dict(doc)
+                class_id = class_obj.class_id
+                if class_id not in GER_class_id:
+                    GER_class_obj.append(class_obj)
+                    GER_class_id.append(class_id)
+                    count +=1
+                    
+                    if count >= 2:
+                        break
+                else:
+                    skip +=1
+        
+        for sem in schedule:
+            while(sem._total_credit_hours <= 16 and len(GER_class_obj)!=0):
+                sem.add_class(GER_class_obj[0])
+                del GER_class_obj[0]
+        
+        return schedule
+            
+        
+    
+        
 
+        
+    
+    
+    
     
 
 # Example usage:
@@ -374,6 +635,10 @@ if __name__ == "__main__":
             
         semester_schedules = convert_schedule_to_obj(full_schedule, startYear=2025, startsFall=True)
         for sem in semester_schedules:
+            print(sem)
+            
+        GER_schedule = add_GER_course(semester_schedules, isBulePlan=False, isEM=True)
+        for sem in GER_schedule:
             print(sem)
     else:
         print("Failed to generate a full schedule.")

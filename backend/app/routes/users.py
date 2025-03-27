@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import schemas, crud, database
+from Functions.Create_User import generate_User, login
 
 router = APIRouter()
+"""
 
 @router.post("/", response_model=schemas.UserResponse)
 def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
@@ -42,3 +44,12 @@ def login(email: str, input_pass: str, db: Session = Depends(database.get_db)):
     if not crud.verify_password(input_pass, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid password")
     return db_user
+"""
+
+@router.get("/create user")
+def create_user(email: str, password: str, username: str):
+    return generate_User(email, password, username)
+
+@router.get("/Login")
+def User_login(account: str, password: str):
+    return login(account, password)
