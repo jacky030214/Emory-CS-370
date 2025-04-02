@@ -1,0 +1,9 @@
+course_id,section,crn,rating,tags
+CS101,1,10001,4,"engaging,light homework,easy exams"
+CS101,2,10002,3,"confusing lectures,harsh grading,heavy homework"
+MATH350,1,20001,5,"challenging,engaging,clear explanations"
+MATH350,2,20002,4,"hard exams,heavy homework,helpful instructor"
+HIST200,1,30001,2,"boring lectures,easy exams,light homework"
+HIST200,2,30002,1,"engaging,interesting topics,occasional pop quizzes"
+Math111,1,40001,4,"engaging,interesting topics,occasional pop quizzes"
+
