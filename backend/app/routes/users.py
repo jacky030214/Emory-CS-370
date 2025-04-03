@@ -2,6 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import schemas, crud, database
 from Functions.Create_User import generate_User, login
+from Functions.Generate_Semester_Schedule_byMajor import generate_full_schedule, convert_schedule_to_obj, add_GER_course
+from Models.User_Logins_Model import User_Logins
+from routes.schedules import get_GER_Schedule
+from pymongo import MongoClient
 
 router = APIRouter()
 """
@@ -46,10 +50,67 @@ def login(email: str, input_pass: str, db: Session = Depends(database.get_db)):
     return db_user
 """
 
-@router.get("/create user")
+@router.post("/create user")
 def create_user(email: str, password: str, username: str):
     return generate_User(email, password, username)
 
 @router.get("/Login")
 def User_login(account: str, password: str):
     return login(account, password)
+
+@router.post("/create schedule")
+def create_schedule(account: str, major_name: str, startingSem: str = "Fall" , startingYear: int = 0):
+    # Connect to MongoDB
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["my_database"]
+    
+    # Access the collection that stores major requirements
+    collection = db["Users"]
+    
+    full_schedule = generate_full_schedule(major_name=major_name, num_semesters=8, min_credits=0, max_credits=18, startingSemester=startingSem)
+
+    # if there is a schedule
+    if full_schedule:
+        semester_schedules = convert_schedule_to_obj(full_schedule, startYear=startingYear, startsFall= True if startingSem == "Fall" else False)
+        GER_schedule = add_GER_course(semester_schedules, isBulePlan=False, isEM=True)
+        outputDict = []
+        for sem in GER_schedule:
+            outputDict.append(sem.to_dict())
+        user = collection.find_one({"email": account})
+        if not user:
+            user = collection.find_one({"username": account})
+            if not user:
+                return "User not exist"
+            collection.update_one({"username": account}, {"$set": {"schedule": outputDict}})
+            return {"message": "Schedule updated"}
+            
+        collection.update_one({"email": account}, {"$set": {"schedule": outputDict}})
+        return {"message": "Schedule updated"}
+    else:
+        return {"Failed to generate a full schedule."}
+    
+@router.get("/get current schedule")
+def get_user_schedule(account: str):
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["my_database"]
+    
+    # Access the collection that stores major requirements
+    collection = db["Users"]
+    
+    user = collection.find_one({"email": account})
+    if not user:
+        user = collection.find_one({"username": account})
+        if not user:
+            return "User not exist"
+        if "schedule" not in user:
+            return {"no schedule found for": user['username']}
+        schedule = user['schedule']
+    if "schedule" not in user:
+        return {"no schedule found for": user['username']}
+    schedule = user['schedule']
+    
+    if schedule:
+        return {"current schedule for": user['username'], "\n": schedule}
+    else: 
+        return {"no schedule found for": user['username']}
+    
