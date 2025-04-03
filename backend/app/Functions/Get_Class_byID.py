@@ -36,7 +36,7 @@ def get_class_by_id(class_id, uri="mongodb://localhost:27017/", db_name="my_data
 # Example usage:
 if __name__ == "__main__":
     # Let's try to fetch the course "Math111"
-    course = get_class_by_id("Math111")
+    course = get_class_by_id("MATH111")
     if course:
         print("Retrieved Course Object:")
         print(course)

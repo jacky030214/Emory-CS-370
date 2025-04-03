@@ -378,230 +378,317 @@ def add_GER_course(schedule, isBulePlan = False, isEM = True):
     end of college: Continuing Commnuication(CC)(2 courses), Experience and Application(XA)(1 course)
     """
     if (isBulePlan):
-        return("isBlue")
-    else:
         # Connect to MongoDB
         uri="mongodb://localhost:27017/", 
         db_name="my_database"
         client = MongoClient(uri)
         db = client[db_name]
-        
-        # for sem in semester_schedules:
-        #     for cls in sem.classes:
-                
-        #         print(cls)    
-            
-        
-        # Assume that the collection is called "Class"
         classes_collection = db["Class"]
         
         
         # Create List for GER classes
         GER_class_obj = []
         GER_class_id = []
+        allclasses_id = []
+        allclasses_obj = []
+        
+        for sem in schedule:
+            for cls in sem.classes:
+                allclasses_id.append(cls.class_id)
+                allclasses_obj.append(cls)
+        
+        
+
+        
+    else:
+        # Connect to MongoDB
+        uri="mongodb://localhost:27017/", 
+        db_name="my_database"
+        client = MongoClient(uri)
+        db = client[db_name]
+        classes_collection = db["Class"]
+        
+        
+        # Create List for GER classes
+        GER_class_obj = []
+        GER_class_id = []
+        allclasses_id = []
+        allclasses_obj = []
+        area1=1
+        area2=1
+        area3=3
+        area4=1
+        area5_1=1
+        area5_2=1
+        area6=2
+        area7_1=2
+        area7_2=2
+        area8=1
+        area9=2
+        
+        
+        
+        for sem in schedule:
+            for cls in sem.classes:
+                allclasses_id.append(cls.class_id)
+                allclasses_obj.append(cls)
+        
+        for cls in allclasses_obj:
+            if  "First Year Seminar with Race Ethnicity" in cls.requirement_designation:
+                area1 = area1-1
+            elif "FirstYear Writing" in cls.requirement_designation:
+                area2 = area2-1
+            elif "writing" in cls.requirement_designation:
+                area3 = area3-1
+            elif "Quantitative Reasoning" in cls.requirement_designation:
+                area4 = area4-1
+            elif "lab" in cls.requirement_designation:
+                area5_1 = area5_1-1
+            elif "Science Nature" in cls.requirement_designation:
+                area5_2 = area5_2-1
+            elif "History Society Cultures" in cls.requirement_designation:
+                area6 = area6-1
+            elif "Intercultural Communication" in cls.requirement_designation:
+                area7_1 = area7_1-1
+            elif "Humanities Arts Performance" in cls.requirement_designation:
+                area7_2 = area7_2-1
+            elif "Physical Education" in cls.requirement_designation:
+                area9 = area9-1
         
         # Area 1 and Area 10
         # Retrieve the document to find requirement_designation:
         doc = classes_collection.find({"requirement_designation": "First Year Seminar with Race  Ethnicity"})
-        while(True):
-            if doc:
-                doc = next(doc)
+        while(area1>0):
+            cls_doc = next(doc)
+            if cls_doc:
+                # doc = next(doc, None)
                 # Convert the document into a Course object using the model's from_dict method
-                class_obj = Class_Model.from_dict(doc)
+                class_obj = Class_Model.from_dict(cls_doc)
                 class_id = class_obj.class_id
-                if class_id not in GER_class_id:
+                if class_id not in (allclasses_id and GER_class_id):
                     GER_class_obj.append(class_obj)
                     GER_class_id.append(class_id)
-                    break
-                else:
-                    next(doc)
-        
+                    area1-=1    
                 
         # Area 2
         # Retrieve the document to find requirement_designation:
         doc = classes_collection.find({"requirement_designation": "FirstYear Writing"})
-        while(True):
-            if doc:
-                doc = next(doc)
+        while(area2>0):
+            cls_doc = next(doc)
+            if cls_doc:
                 # Convert the document into a Course object using the model's from_dict method
-                class_obj = Class_Model.from_dict(doc)
+                class_obj = Class_Model.from_dict(cls_doc)
                 class_id = class_obj.class_id
-                if class_id not in GER_class_id:
+                if class_id not in (GER_class_id and allclasses_id):
                     GER_class_obj.append(class_obj)
                     GER_class_id.append(class_id)
-                    break
-                else:
-                    next(doc)
+                    area2-=1
                     
         # Area 3:
-        count = 0
-        skip = 0
-        while(True):
-            doc = classes_collection.find({"requirement_designation": {"$regex": "writing", "$options": "i"}}).skip(count+skip)
-            if doc:
-                doc = next(doc)
+        doc = classes_collection.find({"requirement_designation": {"$regex": "writing", "$options": "i"}})
+        while(area3>0):
+            cls_doc=next(doc)
+            if cls_doc:
                 # Convert the document into a Course object using the model's from_dict method
-                class_obj = Class_Model.from_dict(doc)
+                class_obj = Class_Model.from_dict(cls_doc)
                 class_id = class_obj.class_id
-                if class_id not in GER_class_id:
+                if class_obj.prereqs != []:
+                    continue
+                if class_id not in (GER_class_id and allclasses_id):
                     GER_class_obj.append(class_obj)
                     GER_class_id.append(class_id)
-                    count +=1
-                    
-                    if count >= 3:
-                        break
-                else:
-                    skip +=1
-                    
+                    area3-=1
+                 
         # Area 4:
-        count = 0
-        skip = 0
-        while(True):
-            doc = classes_collection.find({"requirement_designation": {"$regex": "Quantitative Reasoning", "$options": "i"}}).skip(count+skip)
-            if doc:
-                doc = next(doc)
+        doc = classes_collection.find({"requirement_designation": {"$regex": "Quantitative Reasoning", "$options": "i"}})
+        while(area4>0):
+            cls_doc=next(doc)
+            if cls_doc:
                 # Convert the document into a Course object using the model's from_dict method
-                class_obj = Class_Model.from_dict(doc)
+                class_obj = Class_Model.from_dict(cls_doc)
                 class_id = class_obj.class_id
-                if class_id not in GER_class_id:
+                if class_id not in (GER_class_id and allclasses_id):
                     GER_class_obj.append(class_obj)
                     GER_class_id.append(class_id)
-                    count +=1
-                    
-                    if count >= 1:
-                        break
-                else:
-                    skip +=1
+                    area4-=1
+
                     
         # Area 5:
-        count = 0
-        skip = 0
-        while(True):
-            doc = classes_collection.find({"requirement_designation": {"$regex": "lab", "$options": "i"}}).skip(count+skip)
+
+        doc = classes_collection.find({"requirement_designation": {"$regex": "lab", "$options": "i"}})
+        while(area5_1):
+            cls_doc = next(doc)
             if doc:
-                doc = next(doc)
                 # Convert the document into a Course object using the model's from_dict method
-                class_obj = Class_Model.from_dict(doc)
+                class_obj = Class_Model.from_dict(cls_doc)
                 class_id = class_obj.class_id
-                if class_id not in GER_class_id:
+                if class_id not in (GER_class_id and allclasses_id):
                     GER_class_obj.append(class_obj)
                     GER_class_id.append(class_id)
-                    count +=1
-                    
-                    if count >= 1:
-                        break
-                else:
-                    skip +=1
-        count = 0
-        skip = 0
-        while(True):
-            doc = classes_collection.find({"requirement_designation": {"$regex": "Science Nature", "$options": "i"}}).skip(count+skip)
-            if doc:
-                doc = next(doc)
+                    area5_1-=1
+
+        doc = classes_collection.find({"requirement_designation": {"$regex": "Science Nature", "$options": "i"}})
+        while(area5_2):
+            cls_doc = next(doc) 
+            if cls_doc:
                 # Convert the document into a Course object using the model's from_dict method
-                class_obj = Class_Model.from_dict(doc)
+                class_obj = Class_Model.from_dict(cls_doc)
                 class_id = class_obj.class_id
-                if class_id not in GER_class_id:
+                if class_id not in (GER_class_id and allclasses_id):
                     GER_class_obj.append(class_obj)
                     GER_class_id.append(class_id)
-                    count +=1
-                    
-                    if count >= 2:
-                        break
-                else:
-                    skip +=1
+                    area5_2-=1
                     
                     
         # Area 6:
-        count = 0
-        skip = 0
-        while(True):
-            doc = classes_collection.find({"requirement_designation": {"$regex": "History Society Cultures", "$options": "i"}}).skip(count+skip)
-            if doc:
-                doc = next(doc)
+        doc = classes_collection.find({"requirement_designation": {"$regex": "History Society Cultures", "$options": "i"}})
+        while(area6>0):
+            cls_doc = next(doc)
+            if cls_doc:
                 # Convert the document into a Course object using the model's from_dict method
-                class_obj = Class_Model.from_dict(doc)
+                class_obj = Class_Model.from_dict(cls_doc)
                 class_id = class_obj.class_id
-                if class_id not in GER_class_id:
+                if class_id not in (GER_class_id and allclasses_id):
                     GER_class_obj.append(class_obj)
                     GER_class_id.append(class_id)
-                    count +=1
-                    
-                    if count >= 2:
-                        break
-                else:
-                    skip +=1   
+                    area6-=1
                     
                     
         # Area 7:
-        count = 0
-        skip = 0
-        while(True):
-            doc = classes_collection.find({"requirement_designation": {"$regex": "Intercultural Communication", "$options": "i"}}).skip(count+skip)
-            if doc:
-                doc = next(doc)
+        doc = classes_collection.find({"requirement_designation": {"$regex": "Intercultural Communication", "$options": "i"}, "class_id": {"$regex": "ITAL", "$options": "i"}})
+        while(area7_1>0):
+            cls_doc = next(doc)
+            if cls_doc:
                 # Convert the document into a Course object using the model's from_dict method
-                class_obj = Class_Model.from_dict(doc)
+                class_obj = Class_Model.from_dict(cls_doc)
                 class_id = class_obj.class_id
-                if class_id not in GER_class_id:
+                if class_id not in (GER_class_id and allclasses_id):
                     GER_class_obj.append(class_obj)
                     GER_class_id.append(class_id)
-                    count +=1
-                    
-                    if count >= 2:
-                        break
-                else:
-                    skip +=1
-        count = 0
-        skip = 0
-        while(True):
-            doc = classes_collection.find({"requirement_designation": {"$regex": "Humanities Arts Performance", "$options": "i"}}).skip(count+skip)
-            if doc:
-                doc = next(doc)
+                    area7_1-=1
+        doc = classes_collection.find({"requirement_designation": {"$regex": "Humanities Arts Performance", "$options": "i"}})
+        while(area7_2>0):
+            cls_doc = next(doc)
+            if cls_doc:
                 # Convert the document into a Course object using the model's from_dict method
-                class_obj = Class_Model.from_dict(doc)
+                class_obj = Class_Model.from_dict(cls_doc)
                 class_id = class_obj.class_id
-                if class_id not in GER_class_id:
+                if class_id not in (GER_class_id and allclasses_id):
                     GER_class_obj.append(class_obj)
                     GER_class_id.append(class_id)
-                    count +=1
-                    
-                    if count >= 2:
-                        break
-                else:
-                    skip +=1
+                    area7_2-=1
                     
                     
         # Area 9:
-        count = 0
-        skip = 0
-        while(True):
-            doc = classes_collection.find({"requirement_designation": {"$regex": "Physical Education", "$options": "i"}}).skip(count+skip)
-            if doc:
-                doc = next(doc)
+        doc = classes_collection.find({"requirement_designation": {"$regex": "Physical Education", "$options": "i"}})
+        while(area9>0):
+            cls_doc
+            if cls_doc:
                 # Convert the document into a Course object using the model's from_dict method
-                class_obj = Class_Model.from_dict(doc)
+                class_obj = Class_Model.from_dict(cls_doc)
                 class_id = class_obj.class_id
-                if class_id not in GER_class_id:
+                if class_id not in (GER_class_id and allclasses_id):
                     GER_class_obj.append(class_obj)
                     GER_class_id.append(class_id)
-                    count +=1
+                    area9-=1
                     
-                    if count >= 2:
-                        break
-                else:
-                    skip +=1
+    # First, ensure that missing prerequisites are inserted.
+    for ger_class in GER_class_obj:
+        if ger_class.prereqs:
+            groups = parse_prereq_string(ger_class.prereqs)
+            for group in groups:
+                # Check if any alternative from the group is already scheduled.
+                if not any(is_course_in_schedule(schedule, candidate) for candidate in group):
+                    # If missing, fetch and insert the first candidate.
+                    candidate_course = get_class_by_id(group[0], uri, db_name)
+                    if candidate_course:
+                        if not insert_course_into_earliest_possible_semester(schedule, candidate_course, 19):
+                            print(f"Warning: Could not insert missing prerequisite {candidate_course.class_id} for GER class {ger_class.class_id}")
+                    else:
+                        print(f"Warning: Prerequisite course {group[0]} not found for GER class {ger_class.class_id}")
+
+    # Now, insert each GER class into the earliest semester where prerequisites are satisfied.
+    for ger_class in GER_class_obj:
+        inserted = False
+        for sem_index in range(len(schedule)):
+            if prerequisites_satisfied(ger_class, sem_index, schedule):
+                if schedule[sem_index]._total_credit_hours + ger_class.credit_hours <= 19:
+                    schedule[sem_index].add_class(ger_class)
+                    print(f"Inserted GER class {ger_class.class_id} into semester {schedule[sem_index].semester} {schedule[sem_index].year}")
+                    inserted = True
+                    break
+        if not inserted:
+            print(f"Warning: Could not insert GER class {ger_class.class_id} due to credit or prerequisite constraints.")
+    
         
-        for sem in schedule:
-            while(sem._total_credit_hours <= 16 and len(GER_class_obj)!=0):
-                sem.add_class(GER_class_obj[0])
-                del GER_class_obj[0]
-        
-        return schedule
+    # for sem in schedule:
+    #     while(sem._total_credit_hours <= 16 and len(GER_class_obj)!=0):
+    #         sem.add_class(GER_class_obj[0])
+    #         del GER_class_obj[0]
+    
+    return schedule
             
         
     
-        
+def parse_prereq_string(prereq_str):
+    """
+    Parse a prerequisites string that may include ";" and "or".
+    ";" separates groups of prerequisites that are all required.
+    Within each group, "or" separates alternatives (only one is needed).
+    
+    E.g., "CS101 or MATH101; PHYS101" becomes:
+         [["CS101", "MATH101"], ["PHYS101"]]
+    """
+    groups = []
+    for group in prereq_str.split(';'):
+        group = group.strip()
+        if group:
+            if " or " in group:
+                candidates = [p.strip() for p in group.split(" or ") if p.strip()]
+                groups.append(candidates)
+            else:
+                groups.append([group])
+    return groups
+
+def is_course_in_schedule(schedule, course_id):
+    """
+    Returns True if a course with the given course_id is already present anywhere in the schedule.
+    """
+    for sem in schedule:
+        for cls in sem.classes:
+            if cls.class_id == course_id:
+                return True
+    return False
+
+def insert_course_into_earliest_possible_semester(schedule, course, max_credits=16):
+    """
+    Inserts a course into the earliest semester that has enough credit capacity.
+    Returns True if insertion is successful.
+    """
+    for sem in schedule:
+        if sem._total_credit_hours + course.credit_hours <= max_credits:
+            sem.add_class(course)
+            print(f"Inserted course {course.class_id} into semester {sem.semester} {sem.year}")
+            return True
+    return False
+
+def prerequisites_satisfied(ger_class, sem_index, schedule):
+    """
+    Checks whether the prerequisites for ger_class are satisfied in all semesters before sem_index.
+    It uses parse_prereq_string to handle both ";" and "or" within the prerequisite string.
+    """
+    if not ger_class.prereqs:
+        return True
+    groups = parse_prereq_string(ger_class.prereqs)
+    scheduled_ids = set()
+    for i in range(sem_index):
+        for cls in schedule[i].classes:
+            scheduled_ids.add(cls.class_id)
+    # For each group, at least one candidate must be scheduled.
+    for group in groups:
+        if not any(candidate in scheduled_ids for candidate in group):
+            return False
+    return True
 
         
     
@@ -614,7 +701,7 @@ if __name__ == "__main__":
     
     
         
-    major_input = "Bachelor of Arts in Mathematics"
+    major_input = "Bachelor of Science in Applied Mathematics and Statistics"
     full_schedule = generate_full_schedule(major_input, num_semesters=8, min_credits=0, max_credits=18)
     StartYear = 2022
     IsFall = True
