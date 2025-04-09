@@ -62,11 +62,12 @@ const Dashboard = () => {
   const [classDetails, setClassDetails] = useState(null);
   
   // Major schedule states
-  const [selectedMajor, setSelectedMajor] = useState('');
+  const [selectedMajor, setSelectedMajor] = useState('Bachelor of Arts in Mathematics');
   const [startingSem, setStartingSem] = useState('Fall');
-  const [startingYear, setStartingYear] = useState('2024');
+  const [startingYear, setStartingYear] = useState('2025');
   const [scheduleData, setScheduleData] = useState([]);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
+  const [scheduleError, setScheduleError] = useState('');
   
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -74,9 +75,11 @@ const Dashboard = () => {
   // Available majors
   const majors = [
     'Bachelor of Arts in Mathematics',
+    'Bachelor of Science in Mathematics',
     'Bachelor of Science in Computer Science',
     'Bachelor of Arts in Business Administration',
-    'Bachelor of Science in Engineering'
+    'Bachelor of Science in Engineering',
+    'Bachelor of Science in Applied Mathematics and Statistics'
   ];
 
   // Handle tab change
@@ -123,27 +126,126 @@ const Dashboard = () => {
   // Handle fetchSchedule for major
   const handleFetchSchedule = async () => {
     if (!selectedMajor) {
-      setError('Please select a major');
+      setScheduleError('Please select a major');
       return;
     }
     
     try {
       setLoadingSchedule(true);
-      setError('');
+      setScheduleError('');
       
       // Use MajorAPI to fetch semester schedule
       const data = await MajorAPI.getSemesterScheduleByName(selectedMajor, startingSem, startingYear);
-      setScheduleData(data);
+      
+      // If data is an array with error message
+      if (Array.isArray(data) && data.length === 1 && typeof data[0] === 'string' && data[0].includes('Failed to generate')) {
+        throw new Error(data[0]);
+      }
+      
+      // Handle different response formats
+      if (Array.isArray(data)) {
+        setScheduleData(data);
+      } else if (data && typeof data === 'object') {
+        setScheduleData([data]);
+      } else {
+        throw new Error('Invalid response format from server');
+      }
       
       setSnackbarMessage(`Schedule for ${selectedMajor} loaded successfully`);
       setSnackbarOpen(true);
     } catch (err) {
       console.error('Error fetching schedule:', err);
-      setError('Failed to fetch semester schedule. Please try again.');
+      setScheduleError(`Failed to fetch semester schedule: ${err.message}`);
       setScheduleData([]);
     } finally {
       setLoadingSchedule(false);
     }
+  };
+
+  // Render schedule content with error handling
+  const renderScheduleContent = () => {
+    if (loadingSchedule) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+    
+    if (scheduleError) {
+      return (
+        <Box sx={{ mt: 2 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {scheduleError}
+          </Alert>
+          
+          {scheduleError.includes('Failed to generate') && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              <Typography variant="body2" gutterBottom>
+                <strong>가능한 원인:</strong>
+              </Typography>
+              <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }}>
+                <li>백엔드 알고리즘에서 일정 생성 중 오류가 발생했습니다</li>
+                <li>선택한 전공에 대한 요구사항 데이터가 불완전할 수 있습니다</li>
+                <li>선택한 시작 학기와 연도에 대한 일정을 생성할 수 없습니다</li>
+              </ul>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                <strong>추천 해결책:</strong> 다른 전공이나 시작 학기를 선택해보세요.
+              </Typography>
+            </Alert>
+          )}
+        </Box>
+      );
+    }
+    
+    return renderScheduleData();
+  };
+
+  // Schedule data rendering function with proper null checks
+  const renderScheduleData = () => {
+    if (!scheduleData || scheduleData.length === 0) {
+      return (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography>
+            No schedule data available for the selected major and semester. Try different settings.
+          </Typography>
+        </Box>
+      );
+    }
+    
+    return (
+      <Box>
+        {scheduleData.map((semester, index) => (
+          <Card key={index} variant="outlined" sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" color="primary">
+                {semester.semester || 'Unknown'} {semester.year || 'Year'} 
+                {semester.total_credit_hours ? ` - ${semester.total_credit_hours} Credits` : ''}
+              </Typography>
+              
+              {semester.classes && Array.isArray(semester.classes) && semester.classes.length > 0 ? (
+                <Box sx={{ mt: 2 }}>
+                  {semester.classes.map((course, courseIndex) => (
+                    <Box key={courseIndex} sx={{ mb: 1, p: 1, borderLeft: '3px solid', borderColor: 'primary.main' }}>
+                      <Typography variant="subtitle1">
+                        {course.class_name || 'Unknown Class'} ({course.class_id || 'No ID'})
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {course.credit_hours ? `${course.credit_hours} credits` : 'Credits unknown'} | {course.professor || 'TBA'}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  No classes for this semester
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+    );
   };
 
   return (
@@ -254,7 +356,7 @@ const Dashboard = () => {
                       <Grid item xs={12} sm={6}>
                         <Typography variant="subtitle2">Prerequisites:</Typography>
                         <Box sx={{ mt: 1 }}>
-                          {classDetails.prereqs && classDetails.prereqs.length > 0 ? (
+                          {classDetails.prereqs && Array.isArray(classDetails.prereqs) && classDetails.prereqs.length > 0 ? (
                             classDetails.prereqs.map((prereq, index) => (
                               <Chip 
                                 key={index}
@@ -363,46 +465,7 @@ const Dashboard = () => {
                 {selectedMajor && ` for ${selectedMajor}`}
               </Typography>
               
-              {loadingSchedule ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                  <CircularProgress />
-                </Box>
-              ) : scheduleData && scheduleData.length > 0 ? (
-                <Box>
-                  {scheduleData.map((semester, index) => (
-                    <Card key={index} variant="outlined" sx={{ mb: 3 }}>
-                      <CardContent>
-                        <Typography variant="h6" color="primary">
-                          {semester.semester} {semester.year} - {semester.total_credit_hours} Credits
-                        </Typography>
-                        
-                        {semester.classes && semester.classes.length > 0 ? (
-                          <Box sx={{ mt: 2 }}>
-                            {semester.classes.map((course, courseIndex) => (
-                              <Box key={courseIndex} sx={{ mb: 1, p: 1, borderLeft: '3px solid', borderColor: 'primary.main' }}>
-                                <Typography variant="subtitle1">
-                                  {course.class_name} ({course.class_id})
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  {course.credit_hours} credits | {course.professor || 'TBA'}
-                                </Typography>
-                              </Box>
-                            ))}
-                          </Box>
-                        ) : (
-                          <Typography variant="body2">No classes for this semester</Typography>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </Box>
-              ) : (
-                <Box sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography>
-                    Select a major and click "View Schedule" to see the recommended semester plan.
-                  </Typography>
-                </Box>
-              )}
+              {renderScheduleContent()}
             </Paper>
           </Grid>
         </Grid>
