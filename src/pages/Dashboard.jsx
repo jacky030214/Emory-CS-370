@@ -28,9 +28,11 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ClassIcon from '@mui/icons-material/Class';
 import SearchIcon from '@mui/icons-material/Search';
 import SchoolIcon from '@mui/icons-material/School';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 
 // Import the API services
-import { CourseAPI, MajorAPI } from '../services/api';
+import { CourseAPI, MajorAPI, UserAPI, ProfessorAPI } from "../services/api";
 
 // TabPanel component for tab content
 function TabPanel(props) {
@@ -60,6 +62,7 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [classId, setClassId] = useState('');
   const [classDetails, setClassDetails] = useState(null);
+
   
   // Major schedule states
   const [selectedMajor, setSelectedMajor] = useState('Bachelor of Arts in Mathematics');
@@ -69,17 +72,28 @@ const Dashboard = () => {
   const [loadingSchedule, setLoadingSchedule] = useState(false);
   const [scheduleError, setScheduleError] = useState('');
   
+  // GER schedule states
+  const [gerScheduleData, setGerScheduleData] = useState([]);
+  const [loadingGerSchedule, setLoadingGerSchedule] = useState(false);
+  const [gerScheduleError, setGerScheduleError] = useState('');
+  
+  // Added classes to schedule
+  const [customClasses, setCustomClasses] = useState([]);
+  
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   
   // Available majors
   const majors = [
-    'Bachelor of Arts in Mathematics',
-    'Bachelor of Science in Mathematics',
-    'Bachelor of Science in Computer Science',
-    'Bachelor of Arts in Business Administration',
-    'Bachelor of Science in Engineering',
-    'Bachelor of Science in Applied Mathematics and Statistics'
+    'Bachelor of Arts in African American Studies',
+    'Bachelor of Arts in African Studies',
+    'Bachelor of Arts in American Studies',
+    'Bachelor of Arts in Ancient Mediterranean Studies',
+    'Bachelor of Arts in Anthropology',
+    'Bachelor of Science in Anthropology and Human Biology',
+    'Bachelor of Science in Applied Mathematics',
+    'Bachelor of Science in Applied Mathematics and Statistics',
+    'Bachelor of Arts in Arabic'
   ];
 
   // Handle tab change
@@ -162,9 +176,62 @@ const Dashboard = () => {
     }
   };
 
+  // Handle fetchGERSchedule for major with general education requirements
+  const handleFetchGERSchedule = async () => {
+    if (!selectedMajor) {
+      setGerScheduleError('Please select a major');
+      return;
+    }
+    
+    try {
+      setLoadingGerSchedule(true);
+      setGerScheduleError('');
+      
+      // Use MajorAPI to fetch GER semester schedule
+      const data = await MajorAPI.getSemesterScheduleWithGER(selectedMajor, startingSem, startingYear);
+      
+      // If data is an array with error message
+      if (Array.isArray(data) && data.length === 1 && typeof data[0] === 'string' && data[0].includes('Failed to generate')) {
+        throw new Error(data[0]);
+      }
+      
+      // Handle different response formats
+      if (Array.isArray(data)) {
+        setGerScheduleData(data);
+      } else if (data && typeof data === 'object') {
+        setGerScheduleData([data]);
+      } else {
+        throw new Error('Invalid response format from server');
+      }
+      
+      setSnackbarMessage(`GER Schedule for ${selectedMajor} loaded successfully`);
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('Error fetching GER schedule:', err);
+      setGerScheduleError(`Failed to fetch GER semester schedule: ${err.message}`);
+      setGerScheduleData([]);
+    } finally {
+      setLoadingGerSchedule(false);
+    }
+  };
+
+  // Handle adding a class to the semester schedule
+  const handleAddToSchedule = () => {
+    if (!classDetails) return;
+    
+    // Automatically switch to the schedule tab
+    setTabValue(1);
+    
+    // Add class to custom classes list
+    setCustomClasses([...customClasses, classDetails]);
+    
+    setSnackbarMessage(`${classDetails.class_id}: ${classDetails.class_name} added to your schedule`);
+    setSnackbarOpen(true);
+  };
+
   // Render schedule content with error handling
-  const renderScheduleContent = () => {
-    if (loadingSchedule) {
+  const renderScheduleContent = (scheduleDataToRender, loadingState, errorState) => {
+    if (loadingState) {
       return (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
           <CircularProgress />
@@ -172,14 +239,14 @@ const Dashboard = () => {
       );
     }
     
-    if (scheduleError) {
+    if (errorState) {
       return (
         <Box sx={{ mt: 2 }}>
           <Alert severity="error" sx={{ mb: 2 }}>
-            {scheduleError}
+            {errorState}
           </Alert>
           
-          {scheduleError.includes('Failed to generate') && (
+          {errorState.includes('Failed to generate') && (
             <Alert severity="info" sx={{ mt: 2 }}>
               <Typography variant="body2" gutterBottom>
                 <strong>가능한 원인:</strong>
@@ -198,16 +265,20 @@ const Dashboard = () => {
       );
     }
     
-    return renderScheduleData();
+    return renderScheduleData(scheduleDataToRender);
   };
 
   // Schedule data rendering function with proper null checks
-  const renderScheduleData = () => {
-    if (!scheduleData || scheduleData.length === 0) {
+  const renderScheduleData = (scheduleDataToRender) => {
+    // First check for custom added classes
+    const hasCustomClasses = customClasses.length > 0;
+    const hasScheduleData = scheduleDataToRender && scheduleDataToRender.length > 0;
+    
+    if (!hasCustomClasses && !hasScheduleData) {
       return (
         <Box sx={{ p: 3, textAlign: 'center' }}>
           <Typography>
-            No schedule data available for the selected major and semester. Try different settings.
+            No schedule data available. Add classes from the Class Search or select a major schedule.
           </Typography>
         </Box>
       );
@@ -215,7 +286,32 @@ const Dashboard = () => {
     
     return (
       <Box>
-        {scheduleData.map((semester, index) => (
+        {/* Render Custom Added Classes first (only on the Major Schedule tab) */}
+        {hasCustomClasses && tabValue === 1 && (
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" color="secondary">
+                Your Added Classes
+              </Typography>
+              
+              <Box sx={{ mt: 2 }}>
+                {customClasses.map((course, courseIndex) => (
+                  <Box key={courseIndex} sx={{ mb: 1, p: 1, borderLeft: '3px solid', borderColor: 'secondary.main' }}>
+                    <Typography variant="subtitle1">
+                      {course.class_name || 'Unknown Class'} ({course.class_id || 'No ID'})
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {course.credit_hours ? `${course.credit_hours} credits` : 'Credits unknown'} | {course.professor || 'TBA'}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Render Schedule Data */}
+        {hasScheduleData && scheduleDataToRender.map((semester, index) => (
           <Card key={index} variant="outlined" sx={{ mb: 3 }}>
             <CardContent>
               <Typography variant="h6" color="primary">
@@ -232,6 +328,14 @@ const Dashboard = () => {
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         {course.credit_hours ? `${course.credit_hours} credits` : 'Credits unknown'} | {course.professor || 'TBA'}
+                        {course.requirement_designation && tabValue === 2 && (
+                          <Chip 
+                            size="small" 
+                            label={course.requirement_designation} 
+                            color="secondary" 
+                            sx={{ ml: 1 }}
+                          />
+                        )}
                       </Typography>
                     </Box>
                   ))}
@@ -247,6 +351,71 @@ const Dashboard = () => {
       </Box>
     );
   };
+
+  // Common form for major selection and semester settings, used in both tabs
+  const renderMajorSelectionForm = (handleFetchFunction, loadingState) => (
+    <Paper sx={{ p: 2, height: '100%' }}>
+      <Typography variant="h6" gutterBottom>
+        Select Major and Starting Semester
+      </Typography>
+      
+      <FormControl fullWidth margin="normal">
+        <InputLabel id="major-select-label">Major</InputLabel>
+        <Select
+          labelId="major-select-label"
+          value={selectedMajor}
+          label="Major"
+          onChange={handleMajorChange}
+        >
+          <MenuItem value="">
+            <em>Select a major</em>
+          </MenuItem>
+          {majors.map((major) => (
+            <MenuItem key={major} value={major}>
+              {major}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      
+      <FormControl fullWidth margin="normal">
+        <InputLabel id="semester-select-label">Starting Semester</InputLabel>
+        <Select
+          labelId="semester-select-label"
+          value={startingSem}
+          label="Starting Semester"
+          onChange={(e) => setStartingSem(e.target.value)}
+        >
+          <MenuItem value="Fall">Fall</MenuItem>
+          <MenuItem value="Spring">Spring</MenuItem>
+          <MenuItem value="Summer">Summer</MenuItem>
+        </Select>
+      </FormControl>
+      
+      <FormControl fullWidth margin="normal">
+        <TextField
+          label="Starting Year"
+          value={startingYear}
+          onChange={(e) => setStartingYear(e.target.value)}
+          type="number"
+          variant="outlined"
+        />
+      </FormControl>
+      
+      <Box sx={{ mt: 2 }}>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          onClick={handleFetchFunction}
+          disabled={loadingState}
+          startIcon={loadingState ? <CircularProgress size={20} /> : <SchoolIcon />}
+          fullWidth
+        >
+          {loadingState ? 'Loading...' : 'View Schedule'}
+        </Button>
+      </Box>
+    </Paper>
+  );
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -264,6 +433,7 @@ const Dashboard = () => {
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
           <Tab label="Class Search" icon={<ClassIcon />} iconPosition="start" />
           <Tab label="Major Schedule" icon={<SchoolIcon />} iconPosition="start" />
+          <Tab label="GER Schedule" icon={<MenuBookIcon />} iconPosition="start" />
         </Tabs>
       </Box>
       
@@ -373,7 +543,13 @@ const Dashboard = () => {
                     </Grid>
                   </CardContent>
                   <CardActions>
-                    <Button size="small" color="primary">
+                    <Button 
+                      size="small" 
+                      color="primary"
+                      startIcon={<AddCircleIcon />}
+                      variant="contained"
+                      onClick={handleAddToSchedule}
+                    >
                       Add to Schedule
                     </Button>
                   </CardActions>
@@ -394,67 +570,7 @@ const Dashboard = () => {
         <Grid container spacing={3}>
           {/* Major Selection Form */}
           <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 2, height: '100%' }}>
-              <Typography variant="h6" gutterBottom>
-                Select Major and Starting Semester
-              </Typography>
-              
-              <FormControl fullWidth margin="normal">
-                <InputLabel id="major-select-label">Major</InputLabel>
-                <Select
-                  labelId="major-select-label"
-                  value={selectedMajor}
-                  label="Major"
-                  onChange={handleMajorChange}
-                >
-                  <MenuItem value="">
-                    <em>Select a major</em>
-                  </MenuItem>
-                  {majors.map((major) => (
-                    <MenuItem key={major} value={major}>
-                      {major}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              
-              <FormControl fullWidth margin="normal">
-                <InputLabel id="semester-select-label">Starting Semester</InputLabel>
-                <Select
-                  labelId="semester-select-label"
-                  value={startingSem}
-                  label="Starting Semester"
-                  onChange={(e) => setStartingSem(e.target.value)}
-                >
-                  <MenuItem value="Fall">Fall</MenuItem>
-                  <MenuItem value="Spring">Spring</MenuItem>
-                  <MenuItem value="Summer">Summer</MenuItem>
-                </Select>
-              </FormControl>
-              
-              <FormControl fullWidth margin="normal">
-                <TextField
-                  label="Starting Year"
-                  value={startingYear}
-                  onChange={(e) => setStartingYear(e.target.value)}
-                  type="number"
-                  variant="outlined"
-                />
-              </FormControl>
-              
-              <Box sx={{ mt: 2 }}>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  onClick={handleFetchSchedule}
-                  disabled={loadingSchedule}
-                  startIcon={loadingSchedule ? <CircularProgress size={20} /> : <SchoolIcon />}
-                  fullWidth
-                >
-                  {loadingSchedule ? 'Loading...' : 'View Schedule'}
-                </Button>
-              </Box>
-            </Paper>
+            {renderMajorSelectionForm(handleFetchSchedule, loadingSchedule)}
           </Grid>
           
           {/* Schedule Display */}
@@ -465,7 +581,32 @@ const Dashboard = () => {
                 {selectedMajor && ` for ${selectedMajor}`}
               </Typography>
               
-              {renderScheduleContent()}
+              {renderScheduleContent(scheduleData, loadingSchedule, scheduleError)}
+            </Paper>
+          </Grid>
+        </Grid>
+      </TabPanel>
+      
+      <TabPanel value={tabValue} index={2}>
+        <Grid container spacing={3}>
+          {/* Major Selection Form */}
+          <Grid item xs={12} md={4}>
+            {renderMajorSelectionForm(handleFetchGERSchedule, loadingGerSchedule)}
+          </Grid>
+          
+          {/* GER Schedule Display */}
+          <Grid item xs={12} md={8}>
+            <Paper sx={{ p: 2, minHeight: 240 }}>
+              <Typography variant="h6" gutterBottom>
+                GER Semester Schedule
+                {selectedMajor && ` for ${selectedMajor}`}
+              </Typography>
+              
+              <Typography variant="body2" color="text.secondary" paragraph>
+                This schedule includes General Education Requirements (GER) courses along with major requirements.
+              </Typography>
+              
+              {renderScheduleContent(gerScheduleData, loadingGerSchedule, gerScheduleError)}
             </Paper>
           </Grid>
         </Grid>

@@ -29,10 +29,14 @@ import {
   Settings as SettingsIcon
 } from '@mui/icons-material';
 
+// 이 부분 수정 - Dashboard 컴포넌트 import
 import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/Login_Page';
 import SignupPage from './pages/Signup_Page';
 import axios from 'axios';
+
+// 여기 추가: API 서비스 import
+import { CourseAPI, MajorAPI, UserAPI, ProfessorAPI } from './services/api';
 
 const API_URL = 'http://127.0.0.1:8000';
 
@@ -42,6 +46,8 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// 나머지 테마 설정 부분
 
 // Create theme for consistent styling
 const theme = createTheme({
