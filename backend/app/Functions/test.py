@@ -1,0 +1,329 @@
+import re
+import matplotlib.pyplot as plt
+
+# Your log string
+log = """Loading model...
+Model loaded in 5.96 seconds.
+Generating embeddings...
+Embeddings generated in 0.74 seconds.
+Calculating similarity...
+Similarity calculated in 0.01 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.94 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 2.58 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 1.19 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 1.54 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.80 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.48 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.46 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 1.80 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.77 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 2.29 seconds.
+Generating embeddings...
+Embeddings generated in 0.04 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.46 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.47 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.66 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.88 seconds.
+Generating embeddings...
+Embeddings generated in 0.03 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 1.26 seconds.
+Generating embeddings...
+Embeddings generated in 0.09 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 1.89 seconds.
+Generating embeddings...
+Embeddings generated in 0.10 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 1.51 seconds.
+Generating embeddings...
+Embeddings generated in 0.04 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.74 seconds.
+Generating embeddings...
+Embeddings generated in 0.09 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.79 seconds.
+Generating embeddings...
+Embeddings generated in 0.10 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.56 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.81 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 2.28 seconds.
+Generating embeddings...
+Embeddings generated in 0.10 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.74 seconds.
+Generating embeddings...
+Embeddings generated in 0.08 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.51 seconds.
+Generating embeddings...
+Embeddings generated in 0.03 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.81 seconds.
+Generating embeddings...
+Embeddings generated in 0.03 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 2.09 seconds.
+Generating embeddings...
+Embeddings generated in 0.10 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.72 seconds.
+Generating embeddings...
+Embeddings generated in 0.09 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 3.29 seconds.
+Generating embeddings...
+Embeddings generated in 0.04 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.70 seconds.
+Generating embeddings...
+Embeddings generated in 0.09 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.57 seconds.
+Generating embeddings...
+Embeddings generated in 0.03 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 0.61 seconds.
+Generating embeddings...
+Embeddings generated in 0.03 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+
+Loading model...
+Model loaded in 6.37 seconds.
+Generating embeddings...
+Embeddings generated in 0.03 seconds.
+Calculating similarity...
+Similarity calculated in 0.00 seconds.
+Finished getting similarity.
+"""
+
+# Regular expressions to extract times
+model_times = re.findall(r"Model loaded in ([\d.]+) seconds", log)
+embed_times = re.findall(r"Embeddings generated in ([\d.]+) seconds", log)
+sim_times = re.findall(r"Similarity calculated in ([\d.]+) seconds", log)
+
+# Convert to floats
+model_times = list(map(float, model_times))
+embed_times = list(map(float, embed_times))
+sim_times = list(map(float, sim_times))
+
+# Create x-axis (iteration numbers)
+iterations = list(range(1, len(model_times) + 1))
+
+# Plotting
+plt.figure(figsize=(12, 6))
+plt.plot(iterations, model_times, label="Model Load Time", color="blue")
+plt.plot(iterations, embed_times, label="Embedding Generation Time", color="green")
+plt.plot(iterations, sim_times, label="Similarity Calculation Time", color="red")
+plt.xlabel("Iteration Number")
+plt.ylabel("Time (seconds)")
+plt.title("Task Timing Over Iterations")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Raw data
+results = {
+    "Loading model in loop": {
+        "courses": 33,
+        "time": 43.65
+    },
+    "Loading model outside of loop": {
+        "courses": 33,
+        "time": 2.25
+    },
+    "Loading model outside of loop and generating preference desc vector outside of loop and pregenerating course desc vectors": {
+        "courses": 33,
+        "time": 0.11
+    },
+    "Loading model outside of loop and generating preference desc vector outside of loop and pregenerating course desc vectors and only doing similarity calc for top 10 courses": {
+        "courses": 33,
+        "time": 0.02
+    }
+}
+
+# Print the data
+print("=== Benchmark Results ===")
+for method, data in results.items():
+    print(f"\n{method}:")
+    print(f"Number of courses: {data['courses']}")
+    print(f"Total time taken: {data['time']:.2f} seconds")
+
+# Estimate time for 5000 courses using proportional scaling
+target_courses = 5000
+print("\n=== Estimated Time for 5000 Courses ===")
+for method, data in results.items():
+    time_per_course = data["time"] / data["courses"]
+    estimated_time = time_per_course * target_courses
+    print(f"{method}: Estimated time = {estimated_time:.2f} seconds")
