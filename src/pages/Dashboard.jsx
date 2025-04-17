@@ -62,7 +62,6 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [classId, setClassId] = useState('');
   const [classDetails, setClassDetails] = useState(null);
-
   
   // Major schedule states
   const [selectedMajor, setSelectedMajor] = useState('Bachelor of Arts in Mathematics');
@@ -76,6 +75,20 @@ const Dashboard = () => {
   const [gerScheduleData, setGerScheduleData] = useState([]);
   const [loadingGerSchedule, setLoadingGerSchedule] = useState(false);
   const [gerScheduleError, setGerScheduleError] = useState('');
+
+    // Personalized schedule states
+  const [personalPreferences, setPersonalPreferences] = useState({
+    rmpRating: "high",
+    ger: [],
+    prereqs: [],
+    campus: "Emory",
+    semester: "fall",
+    description: ""
+  });
+  const [completedCourses, setCompletedCourses] = useState([]);
+  const [personalizedSchedule, setPersonalizedSchedule] = useState([]);
+  const [loadingPersonalized, setLoadingPersonalized] = useState(false);
+  const [personalizedError, setPersonalizedError] = useState('');
   
   // Added classes to schedule
   const [customClasses, setCustomClasses] = useState([]);
@@ -227,6 +240,75 @@ const Dashboard = () => {
     
     setSnackbarMessage(`${classDetails.class_id}: ${classDetails.class_name} added to your schedule`);
     setSnackbarOpen(true);
+  };
+
+  // Handle personalized schedule generation ***********************
+  const handleGeneratePersonalizedSchedule = async () => {
+    try {
+      setLoadingPersonalized(true);
+      setPersonalizedError('');
+      
+      // Prepare the request data
+      const requestData = {
+        preferences: {
+          rmp_rating: personalPreferences.rmpRating,
+          ger: personalPreferences.ger,
+          prereqs: completedCourses,
+          campus: personalPreferences.campus,
+          semester: personalPreferences.semester,
+          description: personalPreferences.description
+        }
+      };
+      
+      // Call the API
+      const data = await CourseAPI.generatePersonalizedSchedule(requestData);
+      
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        throw new Error('No courses found matching your preferences');
+      }
+      
+      setPersonalizedSchedule(data);
+      setSnackbarMessage('Personalized schedule generated successfully');
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('Error generating personalized schedule:', err);
+      setPersonalizedError(`Failed to generate personalized schedule: ${err.message}`);
+      setPersonalizedSchedule([]);
+    } finally {
+      setLoadingPersonalized(false);
+    }
+  };
+
+  // Handle change for personalized preferences
+  const handlePreferenceChange = (field, value) => {
+    setPersonalPreferences({
+      ...personalPreferences,
+      [field]: value
+    });
+  };
+
+  // Handle change for GER preferences (multiple selection)
+  const handleGerChange = (event) => {
+    const {
+      target: { value },
+    } = event;
+    
+    // On autofill we get a stringified value
+    const gerValues = typeof value === 'string' ? value.split(',') : value;
+    
+    handlePreferenceChange('ger', gerValues);
+  };
+
+  // Handle adding completed courses
+  const handleAddCompletedCourse = (courseId) => {
+    if (courseId && !completedCourses.includes(courseId)) {
+      setCompletedCourses([...completedCourses, courseId]);
+    }
+  };
+
+  // Handle removing completed courses
+  const handleRemoveCompletedCourse = (courseId) => {
+    setCompletedCourses(completedCourses.filter(id => id !== courseId));
   };
 
   // Render schedule content with error handling
@@ -434,6 +516,7 @@ const Dashboard = () => {
           <Tab label="Class Search" icon={<ClassIcon />} iconPosition="start" />
           <Tab label="Major Schedule" icon={<SchoolIcon />} iconPosition="start" />
           <Tab label="GER Schedule" icon={<MenuBookIcon />} iconPosition="start" />
+          <Tab label="Personalized Schedule" icon={<AccessTimeIcon />} iconPosition="start" />
         </Tabs>
       </Box>
       
@@ -607,6 +690,273 @@ const Dashboard = () => {
               </Typography>
               
               {renderScheduleContent(gerScheduleData, loadingGerSchedule, gerScheduleError)}
+            </Paper>
+          </Grid>
+        </Grid>
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={3}>
+        <Grid container spacing={3}>
+          
+          {/* Preferences Form */}
+          <Grid item xs={12} md={4}>
+            <Paper sx={{ p: 2, height: '100%' }}>
+              <Typography variant="h6" gutterBottom>
+                Personalized Schedule Preferences
+              </Typography>
+              
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="rmp-rating-label">Professor Rating Preference</InputLabel>
+                <Select
+                  labelId="rmp-rating-label"
+                  value={personalPreferences.rmpRating}
+                  label="Professor Rating Preference"
+                  onChange={(e) => handlePreferenceChange('rmpRating', e.target.value)}
+                >
+                  <MenuItem value="high">High Ratings Preferred</MenuItem>
+                  <MenuItem value="low">Low Ratings Acceptable</MenuItem>
+                  <MenuItem value="">No Preference</MenuItem>
+                </Select>
+              </FormControl>
+              
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="ger-label">General Education Requirements</InputLabel>
+                <Select
+                  labelId="ger-label"
+                  multiple
+                  value={personalPreferences.ger}
+                  label="General Education Requirements"
+                  onChange={handleGerChange}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => (
+                        <Chip key={value} label={value} size="small" />
+                      ))}
+                    </Box>
+                  )}
+                >
+                  <MenuItem value="First Year Seminar">First Year Seminar</MenuItem>
+                  <MenuItem value="Humanities, Arts, Performance">Humanities, Arts, Performance</MenuItem>
+                  <MenuItem value="Humanities and Arts">Humanities and Arts</MenuItem>
+                  <MenuItem value="Natural Science">Natural Science</MenuItem>
+                  <MenuItem value="Natural Sciences">Natural Sciences</MenuItem>
+                  <MenuItem value="Quantitative Reasoning">Quantitative Reasoning</MenuItem>
+                  <MenuItem value="Mathematics and Quantitative Reasoning">Mathematics and Quantitative Reasoning</MenuItem>
+                  <MenuItem value="Social Science">Social Science</MenuItem>
+                  <MenuItem value="First Year Writing">First Year Writing</MenuItem>
+                  <MenuItem value="Writing">Writing</MenuItem>
+                  <MenuItem value="Continuing Communication">Continuing Communication</MenuItem>
+                  <MenuItem value="Intercultural Communication">Intercultural Communication</MenuItem>
+                  <MenuItem value="Race and Ethnicity">Race and Ethnicity</MenuItem>
+                  <MenuItem value="Experience and Application">Experience and Application</MenuItem>
+                  <MenuItem value="Physical Education">Physical Education</MenuItem>
+                  <MenuItem value="Health">Health</MenuItem>
+                </Select>
+              </FormControl>
+              
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="campus-label">Campus</InputLabel>
+                <Select
+                  labelId="campus-label"
+                  value={personalPreferences.campus}
+                  label="Campus"
+                  onChange={(e) => handlePreferenceChange('campus', e.target.value)}
+                >
+                  <MenuItem value="Emory">Emory</MenuItem>
+                  <MenuItem value="Oxford">Oxford</MenuItem>
+                  <MenuItem value="">No Preference</MenuItem>
+                </Select>
+              </FormControl>
+              
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="semester-label">Semester</InputLabel>
+                <Select
+                  labelId="semester-label"
+                  value={personalPreferences.semester}
+                  label="Semester"
+                  onChange={(e) => handlePreferenceChange('semester', e.target.value)}
+                >
+                  <MenuItem value="fall">Fall</MenuItem>
+                  <MenuItem value="spring">Spring</MenuItem>
+                  <MenuItem value="summer">Summer</MenuItem>
+                  <MenuItem value="fall/spring">Fall/Spring</MenuItem>
+                </Select>
+              </FormControl>
+              
+              <FormControl fullWidth margin="normal">
+                <TextField
+                  label="Course Description Preferences"
+                  multiline
+                  rows={3}
+                  value={personalPreferences.description}
+                  onChange={(e) => handlePreferenceChange('description', e.target.value)}
+                  placeholder="Describe what topics or content you're interested in learning..."
+                  variant="outlined"
+                />
+              </FormControl>
+              
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Completed Prerequisites:
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                  {completedCourses.map((course) => (
+                    <Chip
+                      key={course}
+                      label={course}
+                      onDelete={() => handleRemoveCompletedCourse(course)}
+                      size="small"
+                      color="primary"
+                    />
+                  ))}
+                  {completedCourses.length === 0 && (
+                    <Typography variant="body2" color="text.secondary">
+                      No prerequisites added yet.
+                    </Typography>
+                  )}
+                </Box>
+                
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <TextField
+                    label="Add Prerequisite"
+                    size="small"
+                    id="prereq-input"
+                    placeholder="e.g. CS170"
+                    variant="outlined"
+                    sx={{ flexGrow: 1 }}
+                  />
+                  <Button 
+                    variant="outlined" 
+                    onClick={() => {
+                      const input = document.getElementById('prereq-input');
+                      if (input && input.value) {
+                        handleAddCompletedCourse(input.value);
+                        input.value = '';
+                      }
+                    }}
+                  >
+                    Add
+                  </Button>
+                </Box>
+              </Box>
+              
+              <Box sx={{ mt: 3 }}>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  onClick={handleGeneratePersonalizedSchedule}
+                  disabled={loadingPersonalized}
+                  startIcon={loadingPersonalized ? <CircularProgress size={20} /> : <SearchIcon />}
+                  fullWidth
+                >
+                  {loadingPersonalized ? 'Generating...' : 'Generate Personalized Schedule'}
+                </Button>
+              </Box>
+            </Paper>
+          </Grid>
+          
+          {/* Personalized Schedule Display */}
+          <Grid item xs={12} md={8}>
+            <Paper sx={{ p: 2, minHeight: 240 }}>
+              <Typography variant="h6" gutterBottom>
+                Your Personalized Schedule
+              </Typography>
+              
+              {personalizedError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {personalizedError}
+                </Alert>
+              )}
+              
+              {loadingPersonalized ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                  <CircularProgress />
+                </Box>
+              ) : personalizedSchedule.length > 0 ? (
+                <Box>
+                  <Typography variant="subtitle1" color="primary" gutterBottom>
+                    Top Recommended Courses Based on Your Preferences:
+                  </Typography>
+                  
+                  {personalizedSchedule.map((course, index) => (
+                    <Card key={index} variant="outlined" sx={{ mb: 2 }}>
+                      <CardContent>
+                        <Typography variant="h6">
+                          {course.course_name || 'Unknown Course'} ({course.course_id || 'No ID'})
+                        </Typography>
+                        
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          <strong>Suitability Score:</strong> {course.suitability_score ? 
+                            `${(course.suitability_score * 100).toFixed(1)}%` : 'N/A'}
+                        </Typography>
+                        
+                        <Typography variant="body2" paragraph>
+                          {course.description || 'No description available.'}
+                        </Typography>
+                        
+                        <Divider sx={{ my: 1 }} />
+                        
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body2">
+                              <strong>Professor:</strong> {course.professor?.name || 'TBA'} 
+                              {course.professor?.rmp_rating ? ` (Rating: ${course.professor.rmp_rating}/5)` : ''}
+                            </Typography>
+                            <Typography variant="body2">
+                              <strong>Campus:</strong> {course.campus || 'Unknown'}
+                            </Typography>
+                            <Typography variant="body2">
+                              <strong>Offered:</strong> {course.recurring || 'Unknown'}
+                            </Typography>
+                          </Grid>
+                          
+                          <Grid item xs={12} sm={6}>
+                            {course.requirement_designation && (
+                              <>
+                                <Typography variant="body2">
+                                  <strong>Requirements:</strong>
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                                  {course.requirement_designation.map((req, reqIdx) => (
+                                    <Chip 
+                                      key={reqIdx}
+                                      label={req} 
+                                      size="small" 
+                                      color="secondary" 
+                                      variant="outlined"
+                                    />
+                                  ))}
+                                </Box>
+                              </>
+                            )}
+                          </Grid>
+                        </Grid>
+                      </CardContent>
+                      <CardActions>
+                        <Button 
+                          size="small" 
+                          color="primary"
+                          startIcon={<AddCircleIcon />}
+                          onClick={() => {
+                            // Add course to custom classes for other schedule tabs
+                            setCustomClasses([...customClasses, course]);
+                            setSnackbarMessage(`${course.course_id || 'Course'} added to your schedule`);
+                            setSnackbarOpen(true);
+                          }}
+                        >
+                          Add to Schedule
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  ))}
+                </Box>
+              ) : (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography>
+                    Fill out your preferences and click "Generate Personalized Schedule" to get course recommendations.
+                  </Typography>
+                </Box>
+              )}
             </Paper>
           </Grid>
         </Grid>

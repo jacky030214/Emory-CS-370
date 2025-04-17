@@ -68,6 +68,16 @@ export const CourseAPI = {
       console.error(`Error fetching class with ID ${classId}:`, error);
       throw error;
     }
+  },
+   // Generate personalized schedule
+  generatePersonalizedSchedule: async (preferences) => {
+    try {
+      const response = await api.post('/generate_personalized_schedule', preferences);
+      return response.data;
+    } catch (error) {
+      console.error('Error generating personalized schedule:', error);
+      throw error;
+    }
   }
 };
 
