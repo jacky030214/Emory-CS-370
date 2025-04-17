@@ -1,3 +1,9 @@
+"""
+Incorporate preference algo to elective decision in jacky algo (make special function that takes in a list of possible electives to choose from)
+Add time conflict management in preference algo
+Add two functionalities to preference algo - return k classes based on needed credit hours for full time status (15 minimum or 12 minimum) (GIVEN TIME CONTRAINT = T/F) AND return top 10 courses based on taken courses as suggestion AND given user preferences return top 10 courses
+"""
+
 import pandas as pd
 import random
 import json
@@ -8,15 +14,70 @@ from tqdm import tqdm
 print("Loading model...")
 from sentence_transformers import SentenceTransformer, util
 from torch import Tensor
-from torch.cuda import is_available 
-device = "cuda" if is_available() else "cpu"
+from torch.cuda import is_available as cuda_available
+from torch.mps import is_available as mps_available
+device = "cuda" if cuda_available() else "cpu"
+device = "mps" if device == "cpu" and mps_available() else device
 model = SentenceTransformer('all-MiniLM-L6-v2').to(device)
 print("Model loaded.")
 
 all_requirements = ["First Year Seminar", "Humanities, Arts, Performance", "Humanities and Arts", "Natural Science", "Natural Sciences", "Quantitative Reasoning", "Mathematics and Quantitative Reasoning", "Social Science", "First Year Seminar", "First Year Writing", "Writing", "Continuing Communication", "Intercultural Communication", "Race and Ethnicity", "Experience and Application", "Physical Education", "Health"]
 
+def convert_to_24_hour(time_str):
+        time_str = time_str.lower().replace(":", "") # 9:00am -> 900am or 2:00pm -> 200pm
+        if "am" in time_str:
+            time_str = time_str.replace("am", "")
+            time_num = int(time_str)
+            if time_num == 1200:  # handle 12:00am as 0
+                return 0
+            return time_num
+        else:
+            time_str = time_str.replace("pm", "")
+            time_num = int(time_str)
+            if time_num < 1200:  # add 12 hours for pm times except 12:XXpm
+                return time_num + 1200
+            return time_num
+
+def parse_course_time(course_time: str) -> tuple[list[str], str, str]:
+    course_time = course_time.split(" ")
+    course_days_str = course_time[0]
+    course_days = []
+    if course_days_str.__contains__("M"):
+        course_days.append("M")
+        course_days_str = course_days_str.replace("M", "")
+    if course_days_str.__contains__("W"):
+        course_days.append("W")
+        course_days_str = course_days_str.replace("W", "")
+    if course_days_str.__contains__("Th"):
+        course_days.append("Th")
+        course_days_str = course_days_str.replace("Th", "")
+    if course_days_str.__contains__("T"):
+        course_days.append("T")
+        course_days_str = course_days_str.replace("T", "")
+    if course_days_str.__contains__("F"):
+        course_days.append("F")
+        course_days_str = course_days_str.replace("F", "")
+    
+    course_hours = course_time[1].split("-")
+    course_start = course_hours[0]
+    if not course_start.__contains__(":"):
+        if course_start.__contains__("am"):
+            course_start = course_start.replace("am", ":00am")
+        else:
+            course_start = course_start.replace("pm", ":00pm")
+    course_end = course_hours[1]
+    if not course_end.__contains__(":"):
+        if course_end.__contains__("am"):
+            course_end = course_end.replace("am", ":00am")
+        else:
+            course_end = course_end.replace("pm", ":00pm")
+
+    course_start = convert_to_24_hour(course_start)
+    course_end = convert_to_24_hour(course_end)
+    return course_days, course_start, course_end
+
 class Course:
-    def __init__(self, course_id: str, section: int, crn: int, course_name: str, recurring: str, prereqs: list[str], requirement_designation: list[str], campus: str, description: str, professor: 'Professor', desc_vector=None):
+    def __init__(self, course_id: str, section: int, crn: int, course_name: str, recurring: str, prereqs: list[str], requirement_designation: list[str], campus: str, description: str, professor: 'Professor', time: str = None, desc_vector=None):
         if not (course_id and section) and not crn: raise AmbiguousCourseError
         assert recurring in ["fall", "spring", "summer", "fall/spring", None], "recurring must be 'fall', 'spring', 'summer', 'fall/spring', or None"
         for req in requirement_designation:
@@ -34,6 +95,7 @@ class Course:
         self.professor = professor
         if desc_vector is not None:
             self.desc_vector = desc_vector
+        self.time = parse_course_time(time) if time else None
         # TODO: Add meeting times, seats, location, capacity, permission req, credits attributes
     # TODO: Add is_full method, check_prereqs method 
     def __repr__(self):
@@ -47,6 +109,7 @@ class Course:
             "requirement_designation": self.requirement_designation,
             "campus": self.campus,
             "description": self.description,
+            "time": self.time,
             "professor": str({
             "name": self.professor.name,
             "email": self.professor.email,
@@ -77,7 +140,7 @@ class Major:
         assert requirements.keys().__contains__("required_courses") and requirements.keys().__contains__("elective1"), "Major must have required_courses and at least a elective1 requirement"
 
 class Preferences:
-   def __init__(self, rmp_rating: str | float, ger: list[str], prereqs: str | list[str], campus: str, semester: str, description: str):
+   def __init__(self, rmp_rating: str | float, ger: list[str], prereqs: str | list[str], campus: str, semester: str, description: str, times: list[str]):
         if isinstance(rmp_rating, str): assert rmp_rating in ["high", None], "rmp_rating must be 'high' or None"
         else: assert 0 <= rmp_rating <= 5, "rmp_rating must be a float between 0 and 5"
         if not isinstance(prereqs, list): assert prereqs in ["high", "low", None], "prereqs must be 'high', 'low', or None or a list of prereqs"
@@ -89,7 +152,13 @@ class Preferences:
         self.campus = campus
         self.semester = semester
         self.description = description
-        
+        if times:
+            self.times = []
+            for time in times:
+                self.times.append(parse_course_time(time))
+        else:
+            self.times = None
+
 # TODO: Add semester selection to all functions 
 AmbiguousCourseError = ValueError("Course object must have either (course_id and section) or crn.")
 NullCourseError = ValueError("Course object cannot be null.")
@@ -141,7 +210,8 @@ def data_loader(uri: str, db_name: str, collection_name: str) -> list[Course]:
                 email=course.get("email", "Failed To Retrieve"),
                 rmp_rating=course.get("rmp_rating", 0)
             ),
-            desc_vector=course.get("desc_vector", None)
+            desc_vector=course.get("desc_vector", None),
+            time=course.get("time", None)
         )
         course_objs.append(course_obj)
 
@@ -153,6 +223,10 @@ def calculate_suitability(course: Course, preferences: Preferences, return_detai
         raise NullCourseError
     if not course.crn and not course.course_id and not course.section:
         raise AmbiguousCourseError
+
+    time_conflict = 0
+    if check_time_conflict(course, preferences):
+        time_conflict = 1       
 
     if preferences.rmp_rating:
         rmp_rating = course.professor.rmp_rating
@@ -203,10 +277,11 @@ def calculate_suitability(course: Course, preferences: Preferences, return_detai
     else:
         ger_score = None
 
-    scores = [rmp_rating, ger_score, prereq_score, campus_score, description_score]
+    scores = [rmp_rating, ger_score, prereq_score, campus_score]
     preference_scores = [score for score in scores if score is not None]
     suitability_score = sum(preference_scores) / len(preference_scores) if preference_scores else 0
-    
+    suitability_score = suitability_score - time_conflict
+
     if not return_details:
         return suitability_score
 
@@ -218,6 +293,7 @@ def calculate_suitability(course: Course, preferences: Preferences, return_detai
             "ger_score": ger_score,
             "prereq_score": prereq_score,
             "campus_score": campus_score,
+            "time_conflict": time_conflict
         }
     
 
@@ -275,6 +351,24 @@ def generate_all_desc_vectors():
             desc_vector = model.encode(course["class_desc"], convert_to_tensor=True)
             collection.update_one({"_id": course["_id"]}, {"$set": {"desc_vector": desc_vector.tolist()}})
 
+
+
+def check_time_conflict(course: Course, preferences: Preferences) -> bool:
+    if not course.time or not preferences.times:
+        return False
+    course_days, course_start, course_end = course.time
+    preferences_times = preferences.times
+
+    days_to_check = []
+    for pref_time in preferences_times:
+        pref_days, pref_start, pref_end = pref_time
+        for course_day in course_days:
+            if course_day in pref_days:
+                if course_start < pref_end and pref_start < course_end:
+                    return True
+    return False
+    
+
 def main():
     print("Retrieving course data...")
     courses = data_loader(uri="mongodb://localhost:27017/", db_name="my_database", collection_name="Class")
@@ -287,6 +381,7 @@ def main():
         campus="Emory",
         semester="fall",
         description="I would like to learn about data structures and algorithms.",
+        times = ["TTh 11:30am-12:45pm", "F 1pm-2:15pm", "MW 8:30am-9:45am"]
     )
     preference_vector = model.encode(preferences.description, convert_to_tensor=True) if preferences.description else None
     

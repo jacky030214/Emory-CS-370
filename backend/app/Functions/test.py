@@ -1,329 +1,83 @@
-import re
-import matplotlib.pyplot as plt
+def convert_to_24_hour(time_str):
+        time_str = time_str.lower().replace(":", "") # 9:00am -> 900am or 2:00pm -> 200pm
+        if "am" in time_str:
+            time_str = time_str.replace("am", "")
+            time_num = int(time_str)
+            if time_num == 1200:  # handle 12:00am as 0
+                return 0
+            return time_num
+        else:
+            time_str = time_str.replace("pm", "")
+            time_num = int(time_str)
+            if time_num == 1200:  # add 12 hours for pm times except 12pm
+                return time_num
+            return time_num + 1200
 
-# Your log string
-log = """Loading model...
-Model loaded in 5.96 seconds.
-Generating embeddings...
-Embeddings generated in 0.74 seconds.
-Calculating similarity...
-Similarity calculated in 0.01 seconds.
-Finished getting similarity.
+def parse_course_time(course_time: str) -> tuple[list[str], str, str]:
+    course_time = course_time.split(" ")
+    course_days_str = course_time[0]
+    course_days = []
+    if course_days_str.__contains__("M"):
+        course_days.append("M")
+        course_days_str = course_days_str.replace("M", "")
+    if course_days_str.__contains__("W"):
+        course_days.append("W")
+        course_days_str = course_days_str.replace("W", "")
+    if course_days_str.__contains__("Th"):
+        course_days.append("Th")
+        course_days_str = course_days_str.replace("Th", "")
+    if course_days_str.__contains__("T"):
+        course_days.append("T")
+        course_days_str = course_days_str.replace("T", "")
+    if course_days_str.__contains__("F"):
+        course_days.append("F")
+        course_days_str = course_days_str.replace("F", "")
+    
+    course_hours = course_time[1].split("-")
+    course_start = course_hours[0]
+    if not course_start.__contains__(":"):
+        if course_start.__contains__("am"):
+            course_start = course_start.replace("am", ":00am")
+        else:
+            course_start = course_start.replace("pm", ":00pm")
+    course_end = course_hours[1]
+    if not course_end.__contains__(":"):
+        if course_end.__contains__("am"):
+            course_end = course_end.replace("am", ":00am")
+        else:
+            course_end = course_end.replace("pm", ":00pm")
 
-Loading model...
-Model loaded in 0.94 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
+    course_start = convert_to_24_hour(course_start)
+    course_end = convert_to_24_hour(course_end)
+    return course_days, course_start, course_end
 
-Loading model...
-Model loaded in 2.58 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
+import unittest
 
-Loading model...
-Model loaded in 1.19 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
+class TestFunctions(unittest.TestCase):
 
-Loading model...
-Model loaded in 1.54 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
+    def test_convert_to_24_hour(self):
+        # Test AM times
+        self.assertEqual(convert_to_24_hour("9:00am"), 900)
+        self.assertEqual(convert_to_24_hour("12:00am"), 0)
+        self.assertEqual(convert_to_24_hour("11:59am"), 1159)
 
-Loading model...
-Model loaded in 0.80 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
+        # Test PM times
+        self.assertEqual(convert_to_24_hour("2:00pm"), 1400)
+        self.assertEqual(convert_to_24_hour("12:00pm"), 1200)
+        self.assertEqual(convert_to_24_hour("11:59pm"), 2359)
 
-Loading model...
-Model loaded in 0.48 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
+    def test_parse_course_time(self):
+        # Test single day
+        self.assertEqual(parse_course_time("M 9:00am-10:00am"), (["M"], 900, 1000))
+        self.assertEqual(parse_course_time("F 1:00pm-2:30pm"), (["F"], 1300, 1430))
 
-Loading model...
-Model loaded in 0.46 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
+        # Test multiple days
+        self.assertEqual(parse_course_time("MWF 9:00am-10:00am"), (["M", "W", "F"], 900, 1000))
+        self.assertEqual(parse_course_time("TTh 2:00pm-3:15pm"), (["Th", "T"], 1400, 1515))
 
-Loading model...
-Model loaded in 1.80 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
+        # Test edge cases
+        self.assertEqual(parse_course_time("MWThF 12:00am-12:00pm"), (["M", "W", "Th", "F"], 0, 1200))
+        self.assertEqual(parse_course_time("T 11:59pm-12:00am"), (["T"], 2359, 0))
 
-Loading model...
-Model loaded in 0.77 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 2.29 seconds.
-Generating embeddings...
-Embeddings generated in 0.04 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.46 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.47 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.66 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.88 seconds.
-Generating embeddings...
-Embeddings generated in 0.03 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 1.26 seconds.
-Generating embeddings...
-Embeddings generated in 0.09 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 1.89 seconds.
-Generating embeddings...
-Embeddings generated in 0.10 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 1.51 seconds.
-Generating embeddings...
-Embeddings generated in 0.04 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.74 seconds.
-Generating embeddings...
-Embeddings generated in 0.09 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.79 seconds.
-Generating embeddings...
-Embeddings generated in 0.10 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.56 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.81 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 2.28 seconds.
-Generating embeddings...
-Embeddings generated in 0.10 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.74 seconds.
-Generating embeddings...
-Embeddings generated in 0.08 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.51 seconds.
-Generating embeddings...
-Embeddings generated in 0.03 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.81 seconds.
-Generating embeddings...
-Embeddings generated in 0.03 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 2.09 seconds.
-Generating embeddings...
-Embeddings generated in 0.10 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.72 seconds.
-Generating embeddings...
-Embeddings generated in 0.09 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 3.29 seconds.
-Generating embeddings...
-Embeddings generated in 0.04 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.70 seconds.
-Generating embeddings...
-Embeddings generated in 0.09 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.57 seconds.
-Generating embeddings...
-Embeddings generated in 0.03 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 0.61 seconds.
-Generating embeddings...
-Embeddings generated in 0.03 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-
-Loading model...
-Model loaded in 6.37 seconds.
-Generating embeddings...
-Embeddings generated in 0.03 seconds.
-Calculating similarity...
-Similarity calculated in 0.00 seconds.
-Finished getting similarity.
-"""
-
-# Regular expressions to extract times
-model_times = re.findall(r"Model loaded in ([\d.]+) seconds", log)
-embed_times = re.findall(r"Embeddings generated in ([\d.]+) seconds", log)
-sim_times = re.findall(r"Similarity calculated in ([\d.]+) seconds", log)
-
-# Convert to floats
-model_times = list(map(float, model_times))
-embed_times = list(map(float, embed_times))
-sim_times = list(map(float, sim_times))
-
-# Create x-axis (iteration numbers)
-iterations = list(range(1, len(model_times) + 1))
-
-# Plotting
-plt.figure(figsize=(12, 6))
-plt.plot(iterations, model_times, label="Model Load Time", color="blue")
-plt.plot(iterations, embed_times, label="Embedding Generation Time", color="green")
-plt.plot(iterations, sim_times, label="Similarity Calculation Time", color="red")
-plt.xlabel("Iteration Number")
-plt.ylabel("Time (seconds)")
-plt.title("Task Timing Over Iterations")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
-# Raw data
-results = {
-    "Loading model in loop": {
-        "courses": 33,
-        "time": 43.65
-    },
-    "Loading model outside of loop": {
-        "courses": 33,
-        "time": 2.25
-    },
-    "Loading model outside of loop and generating preference desc vector outside of loop and pregenerating course desc vectors": {
-        "courses": 33,
-        "time": 0.11
-    },
-    "Loading model outside of loop and generating preference desc vector outside of loop and pregenerating course desc vectors and only doing similarity calc for top 10 courses": {
-        "courses": 33,
-        "time": 0.02
-    }
-}
-
-# Print the data
-print("=== Benchmark Results ===")
-for method, data in results.items():
-    print(f"\n{method}:")
-    print(f"Number of courses: {data['courses']}")
-    print(f"Total time taken: {data['time']:.2f} seconds")
-
-# Estimate time for 5000 courses using proportional scaling
-target_courses = 5000
-print("\n=== Estimated Time for 5000 Courses ===")
-for method, data in results.items():
-    time_per_course = data["time"] / data["courses"]
-    estimated_time = time_per_course * target_courses
-    print(f"{method}: Estimated time = {estimated_time:.2f} seconds")
+if __name__ == "__main__":
+    unittest.main()
