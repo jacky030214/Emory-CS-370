@@ -1,83 +1,122 @@
-def convert_to_24_hour(time_str):
-        time_str = time_str.lower().replace(":", "") # 9:00am -> 900am or 2:00pm -> 200pm
-        if "am" in time_str:
-            time_str = time_str.replace("am", "")
-            time_num = int(time_str)
-            if time_num == 1200:  # handle 12:00am as 0
-                return 0
-            return time_num
-        else:
-            time_str = time_str.replace("pm", "")
-            time_num = int(time_str)
-            if time_num == 1200:  # add 12 hours for pm times except 12pm
-                return time_num
-            return time_num + 1200
-
-def parse_course_time(course_time: str) -> tuple[list[str], str, str]:
-    course_time = course_time.split(" ")
-    course_days_str = course_time[0]
-    course_days = []
-    if course_days_str.__contains__("M"):
-        course_days.append("M")
-        course_days_str = course_days_str.replace("M", "")
-    if course_days_str.__contains__("W"):
-        course_days.append("W")
-        course_days_str = course_days_str.replace("W", "")
-    if course_days_str.__contains__("Th"):
-        course_days.append("Th")
-        course_days_str = course_days_str.replace("Th", "")
-    if course_days_str.__contains__("T"):
-        course_days.append("T")
-        course_days_str = course_days_str.replace("T", "")
-    if course_days_str.__contains__("F"):
-        course_days.append("F")
-        course_days_str = course_days_str.replace("F", "")
-    
-    course_hours = course_time[1].split("-")
-    course_start = course_hours[0]
-    if not course_start.__contains__(":"):
-        if course_start.__contains__("am"):
-            course_start = course_start.replace("am", ":00am")
-        else:
-            course_start = course_start.replace("pm", ":00pm")
-    course_end = course_hours[1]
-    if not course_end.__contains__(":"):
-        if course_end.__contains__("am"):
-            course_end = course_end.replace("am", ":00am")
-        else:
-            course_end = course_end.replace("pm", ":00pm")
-
-    course_start = convert_to_24_hour(course_start)
-    course_end = convert_to_24_hour(course_end)
-    return course_days, course_start, course_end
+import os, sys
+# Go up 3 levels from this file to get to the project root
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 import unittest
+from unittest.mock import MagicMock
+from backend.app.Functions.generate_personalized_schedule import get_top_k_courses, convert_to_Course_obj, Preferences, Course, Professor
+from backend.app.Models.Class_Detail_Model import Class_Detail
+from backend.app.Models.Class_Model import Class_Model
+from backend.app.Models.Semester_Schedule_Model import Semester_Schedule
+# Removed unused import for data_loader
 
-class TestFunctions(unittest.TestCase):
+class TestGeneratePersonalizedSchedule(unittest.TestCase):
 
-    def test_convert_to_24_hour(self):
-        # Test AM times
-        self.assertEqual(convert_to_24_hour("9:00am"), 900)
-        self.assertEqual(convert_to_24_hour("12:00am"), 0)
-        self.assertEqual(convert_to_24_hour("11:59am"), 1159)
+    def setUp(self):
+        # Mock Class_Detail and Class_Model objects
+        self.mock_class_detail = Class_Detail(
+            class_id="CS170",
+            class_num=12345,
+            class_name="Introduction to Computer Science",
+            recurring="fall",
+            credit_hours=3
+        )
+        self.mock_class_detail.prereqs = ["MATH111"]
+        self.mock_class_detail.requirement_designation = ["Quantitative Reasoning"]
+        self.mock_class_detail.campus = "EM"
+        self.mock_class_detail.class_desc = "Learn the basics of computer science."
+        self.mock_class_detail.section = 1
+        self.mock_class_detail.class_num = 12345
+        self.mock_class_detail.professor = Professor("Dr. Smith", "smith@university.edu", 4.5)
+        self.mock_class_model = Class_Model(
+            class_id="CS171",
+            class_name="Data Structures",
+            recurring="spring",
+            credit_hours=3
+        )
+        self.mock_class_model.recurring = "spring"
+        self.mock_class_model.credit_hours = 3
+        self.mock_class_model.prereqs = ["CS170"]
+        self.mock_class_model.requirement_designation = ["Quantitative Reasoning"]
+        self.mock_class_model.campus = "EM"
+        self.mock_class_model.class_desc = "Learn about data structures."
+        self.mock_class_model.section = 2
+        self.mock_class_model.class_num = 67890
+        self.mock_class_model.professor = Professor("Dr. Johnson", "johnson@university.edu", 4.8)
+        self.mock_class_model.time_slot = "TTh 1:00pm-2:15pm"
 
-        # Test PM times
-        self.assertEqual(convert_to_24_hour("2:00pm"), 1400)
-        self.assertEqual(convert_to_24_hour("12:00pm"), 1200)
-        self.assertEqual(convert_to_24_hour("11:59pm"), 2359)
+        # Mock Semester_Schedule
+        self.mock_schedule = Semester_Schedule(year=2025, semester="fall")
+        self.mock_schedule.classes = [self.mock_class_detail, self.mock_class_model]
 
-    def test_parse_course_time(self):
-        # Test single day
-        self.assertEqual(parse_course_time("M 9:00am-10:00am"), (["M"], 900, 1000))
-        self.assertEqual(parse_course_time("F 1:00pm-2:30pm"), (["F"], 1300, 1430))
+    def test_convert_to_Course_obj(self):
+        # Test conversion of Class_Detail to Course
+        course_obj = convert_to_Course_obj(self.mock_class_detail)
+        self.assertIsInstance(course_obj, Course)
+        self.assertEqual(course_obj.course_id, "CS170")
+        self.assertEqual(course_obj.course_name, "Introduction to Computer Science")
+        self.assertEqual(course_obj.campus, "Emory")
 
-        # Test multiple days
-        self.assertEqual(parse_course_time("MWF 9:00am-10:00am"), (["M", "W", "F"], 900, 1000))
-        self.assertEqual(parse_course_time("TTh 2:00pm-3:15pm"), (["Th", "T"], 1400, 1515))
+        # Test conversion of Class_Model to Course
+        course_obj = convert_to_Course_obj(self.mock_class_model)
+        self.assertIsInstance(course_obj, Course)
+        self.assertEqual(course_obj.course_id, "CS171")
+        self.assertEqual(course_obj.course_name, "Data Structures")
+        self.assertEqual(course_obj.campus, "Emory")
 
-        # Test edge cases
-        self.assertEqual(parse_course_time("MWThF 12:00am-12:00pm"), (["M", "W", "Th", "F"], 0, 1200))
-        self.assertEqual(parse_course_time("T 11:59pm-12:00am"), (["T"], 2359, 0))
+    def test_get_top_k_courses(self):
+        # Mock preferences
+        preferences = Preferences(
+            rmp_rating="high",
+            ger=["Quantitative Reasoning"],
+            taken=["CS170"],
+            campus="Emory",
+            semester="fall",
+            description="I want to learn about data structures and algorithms.",
+            times=["MW 10:00am-11:15am", "TTh 1:00pm-2:15pm"]
+        )
+
+        # Mock data_loader to return a list of Course objects
+        mock_course_1 = Course(
+            course_id="CS170",
+            section=1,
+            crn=12345,
+            course_name="Introduction to Computer Science",
+            recurring="fall",
+            taken=["MATH111"],
+            requirement_designation=["Quantitative Reasoning"],
+            campus="Emory",
+            description="Learn the basics of computer science.",
+            professor=Professor("Dr. Smith", "smith@university.edu", 4.5),
+            time="MW 10:00am-11:15am"
+        )
+
+        mock_course_2 = Course(
+            course_id="CS171",
+            section=2,
+            crn=67890,
+            course_name="Data Structures",
+            recurring="spring",
+            taken=["CS170"],
+            requirement_designation=["Quantitative Reasoning"],
+            campus="Emory",
+            description="Learn about data structures.",
+            professor=Professor("Dr. Johnson", "johnson@university.edu", 4.8),
+            time="TTh 1:00pm-2:15pm"
+        )
+        # Removed redefinition of data_loader
+        mock_courses = [mock_course_1, mock_course_2]
+
+        # Mock data_loader function
+        data_loader = MagicMock(return_value=mock_courses)
+        # Removed unused data_loader mock
+        # Call get_top_k_courses
+        top_k_courses = get_top_k_courses([self.mock_schedule], preferences, k=2)
+
+        # Verify the results
+        self.assertEqual(len(top_k_courses), 2)
+        self.assertEqual(top_k_courses[0][0].course_id, "CS171")
+        self.assertEqual(top_k_courses[1][0].course_id, "CS170")
 
 if __name__ == "__main__":
     unittest.main()
