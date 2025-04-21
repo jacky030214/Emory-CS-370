@@ -1,6 +1,6 @@
-// src/pages/Signup_Page.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   Box,
   Button,
@@ -12,14 +12,18 @@ import {
   Container,
   Paper,
   Stack,
+  CircularProgress,
   Alert,
-  Snackbar
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { Google, Apple, Facebook, GitHub } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 
-// Create dark theme (same as Login_Page)
+// Create dark theme for consistency
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',
@@ -35,102 +39,86 @@ const darkTheme = createTheme({
 
 const Signup_Page = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    name: '',
-    school: ''
-  });
-  const [errors, setErrors] = useState({});
-  const [openSnackbar, setOpenSnackbar] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [userType, setUserType] = useState('student');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  // API base URL
+  const API_URL = 'http://127.0.0.1:8000';
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error for this field when user types
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+  // Handle signup with the backend API
+  const handleSignup = async () => {
+    // Basic validation
+    if (!email || !password || !username) {
+      setError('Please fill in all required fields');
+      return;
     }
-  };
 
-  const validateForm = () => {
-    const newErrors = {};
-    
-    // Email validation
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
     }
-    
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-    
-    // Confirm password validation
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-    
-    // Name validation
-    if (!formData.name) {
-      newErrors.name = 'Name is required';
-    }
-    
-    // School validation
-    if (!formData.school) {
-      newErrors.school = 'School is required';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      // Here you would typically make an API call to register the user
-      // For now, we'll just simulate a successful registration
-      setSnackbarMessage('Registration successful! Redirecting to login...');
-      setSnackbarSeverity('success');
-      setOpenSnackbar(true);
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
       
-      // Save user data to localStorage (as a simple example)
-      const userData = {
-        email: formData.email,
-        name: formData.name,
-        school: formData.school
-      };
-      localStorage.setItem('userData', JSON.stringify(userData));
+      // Send signup request to FastAPI backend
+      const response = await axios.post(`${API_URL}/users/create_user`, {
+        email: email,
+        username: username,
+        password: password,
+        user_type: userType
+      });
       
-      // Redirect to login page after a short delay
-      setTimeout(() => {
+      // If signup successful, navigate to login
+      if (response.status === 201 || response.status === 200) {
         navigate('/login');
-      }, 2000);
-    } else {
-      setSnackbarMessage('Please fix the errors in the form');
-      setSnackbarSeverity('error');
-      setOpenSnackbar(true);
+      }
+    } catch (err) {
+      console.error('Signup failed:', err);
+      
+      if (err.response) {
+        if (err.response.status === 400) {
+          setError('Invalid input data. Please check your information.');
+        } else if (err.response.status === 409) {
+          setError('Email or username already exists');
+        } else {
+          setError(`Error: ${err.response.data.detail || 'Signup failed'}`);
+        }
+      } else {
+        setError('An error occurred during signup. Please try again.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Navigate to login page
+  const handleLogin = () => {
+    navigate('/login');
+  };
+
+  // Handle social signup (currently just mocks the signup)
   const handleSocialSignup = (provider) => {
-    setSnackbarMessage(`${provider} signup not implemented yet`);
-    setSnackbarSeverity('info');
-    setOpenSnackbar(true);
+    setLoading(true);
+    
+    // In a real app, this would integrate with the social provider's OAuth
+    console.log(`Signing up with ${provider}`);
+    
+    // Mock successful signup
+    setTimeout(() => {
+      navigate('/login');
+    }, 1000);
   };
 
   return (
@@ -158,8 +146,11 @@ const Signup_Page = () => {
             <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
               <Button color="inherit">Home</Button>
             </Link>
-            <Link to="/login" style={{ textDecoration: 'none', color: 'inherit' }}>
-              <Button color="inherit">Login</Button>
+            <Link to="/settings" style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Button color="inherit">Settings</Button>
+            </Link>
+            <Link to="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Button color="inherit">Profile</Button>
             </Link>
             <Link to="/help" style={{ textDecoration: 'none', color: 'inherit' }}>
               <Button color="inherit">Help</Button>
@@ -172,14 +163,13 @@ const Signup_Page = () => {
           <Box
             sx={{
               mt: 8,
-              mb: 8,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
             }}
           >
             <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
-              Sign up for Degree<span style={{ color: '#ff6b00' }}>Flow</span>🚀
+              Create your Degree<span style={{ color: '#ff6b00' }}>Flow</span> account 🎓
             </Typography>
 
             <Paper 
@@ -191,148 +181,148 @@ const Signup_Page = () => {
                 borderRadius: 2
               }}
             >
-              <form onSubmit={handleSubmit}>
-                <Stack spacing={3}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    name="email"
-                    variant="outlined"
-                    value={formData.email}
-                    onChange={handleChange}
-                    error={Boolean(errors.email)}
-                    helperText={errors.email}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Password"
-                    name="password"
-                    type="password"
-                    variant="outlined"
-                    value={formData.password}
-                    onChange={handleChange}
-                    error={Boolean(errors.password)}
-                    helperText={errors.password}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Confirm Password"
-                    name="confirmPassword"
-                    type="password"
-                    variant="outlined"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    error={Boolean(errors.confirmPassword)}
-                    helperText={errors.confirmPassword}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Full Name"
-                    name="name"
-                    variant="outlined"
-                    value={formData.name}
-                    onChange={handleChange}
-                    error={Boolean(errors.name)}
-                    helperText={errors.name}
-                  />
-                  <TextField
-                    fullWidth
-                    label="School / University"
-                    name="school"
-                    variant="outlined"
-                    value={formData.school}
-                    onChange={handleChange}
-                    error={Boolean(errors.school)}
-                    helperText={errors.school}
-                  />
-                  
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
+              
+              <Stack spacing={3}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  variant="outlined"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                />
+                <TextField
+                  fullWidth
+                  label="Username"
+                  variant="outlined"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={loading}
+                />
+                <TextField
+                  fullWidth
+                  label="Password"
+                  type="password"
+                  variant="outlined"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                />
+                <TextField
+                  fullWidth
+                  label="Confirm Password"
+                  type="password"
+                  variant="outlined"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={loading}
+                />
+
+                <FormControl fullWidth>
+                  <InputLabel>User Type</InputLabel>
+                  <Select
+                    value={userType}
+                    label="User Type"
+                    onChange={(e) => setUserType(e.target.value)}
+                    disabled={loading}
+                  >
+                    <MenuItem value="student">Student</MenuItem>
+                    <MenuItem value="professor">Professor</MenuItem>
+                    <MenuItem value="admin">Administrator</MenuItem>
+                  </Select>
+                </FormControl>
+                
+                <Stack 
+                  direction="row" 
+                  spacing={2}
+                  sx={{ mt: 2 }}
+                >
                   <Button
-                    type="submit"
                     fullWidth
                     variant="contained"
                     sx={{ 
                       bgcolor: 'primary.main',
-                      '&:hover': { bgcolor: '#ff8c00' }
+                      '&:hover': { bgcolor: '#ff8a33' }
                     }}
+                    onClick={handleSignup}
+                    disabled={loading}
                   >
-                    Create Account
+                    {loading ? <CircularProgress size={24} /> : 'Sign up'}
                   </Button>
-
-                  <Typography variant="body2" align="center" sx={{ mt: 2 }}>
-                    Already have an account?{' '}
-                    <Link to="/login" style={{ color: '#ff6b00' }}>
-                      Log in
-                    </Link>
-                  </Typography>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    sx={{ 
+                      bgcolor: 'rgba(255, 255, 255, 0.1)',
+                      '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' }
+                    }}
+                    onClick={handleLogin}
+                    disabled={loading}
+                  >
+                    Log in
+                  </Button>
                 </Stack>
-              </form>
 
-              <Typography variant="body2" align="center" sx={{ mt: 3, mb: 2 }}>
-                Or sign up with:
-              </Typography>
-
-              {/* Social Signup Buttons */}
-              <Stack 
-                direction="row" 
-                spacing={2} 
-                justifyContent="center"
-              >
-                <IconButton 
-                  sx={{ 
-                    bgcolor: 'white',
-                    '&:hover': { bgcolor: '#f5f5f5' }
-                  }}
-                  onClick={() => handleSocialSignup('Google')}
+                {/* Social Signup Buttons */}
+                <Typography variant="body2" align="center" sx={{ mt: 2, mb: 1 }}>
+                  Or sign up with
+                </Typography>
+                
+                <Stack 
+                  direction="row" 
+                  spacing={2} 
+                  justifyContent="center"
                 >
-                  <Google sx={{ color: '#000' }} />
-                </IconButton>
-                <IconButton 
-                  sx={{ 
-                    bgcolor: 'white',
-                    '&:hover': { bgcolor: '#f5f5f5' }
-                  }}
-                  onClick={() => handleSocialSignup('Apple')}
-                >
-                  <Apple sx={{ color: '#000' }} />
-                </IconButton>
-                <IconButton 
-                  sx={{ 
-                    bgcolor: 'white',
-                    '&:hover': { bgcolor: '#f5f5f5' }
-                  }}
-                  onClick={() => handleSocialSignup('Facebook')}
-                >
-                  <Facebook sx={{ color: '#000' }} />
-                </IconButton>
-                <IconButton 
-                  sx={{ 
-                    bgcolor: 'white',
-                    '&:hover': { bgcolor: '#f5f5f5' }
-                  }}
-                  onClick={() => handleSocialSignup('GitHub')}
-                >
-                  <GitHub sx={{ color: '#000' }} />
-                </IconButton>
+                  <IconButton 
+                    sx={{ 
+                      bgcolor: 'white',
+                      '&:hover': { bgcolor: '#f5f5f5' }
+                    }}
+                    onClick={() => handleSocialSignup('google')}
+                    disabled={loading}
+                  >
+                    <Google sx={{ color: '#000' }} />
+                  </IconButton>
+                  <IconButton 
+                    sx={{ 
+                      bgcolor: 'white',
+                      '&:hover': { bgcolor: '#f5f5f5' }
+                    }}
+                    onClick={() => handleSocialSignup('apple')}
+                    disabled={loading}
+                  >
+                    <Apple sx={{ color: '#000' }} />
+                  </IconButton>
+                  <IconButton 
+                    sx={{ 
+                      bgcolor: 'white',
+                      '&:hover': { bgcolor: '#f5f5f5' }
+                    }}
+                    onClick={() => handleSocialSignup('facebook')}
+                    disabled={loading}
+                  >
+                    <Facebook sx={{ color: '#000' }} />
+                  </IconButton>
+                  <IconButton 
+                    sx={{ 
+                      bgcolor: 'white',
+                      '&:hover': { bgcolor: '#f5f5f5' }
+                    }}
+                    onClick={() => handleSocialSignup('github')}
+                    disabled={loading}
+                  >
+                    <GitHub sx={{ color: '#000' }} />
+                  </IconButton>
+                </Stack>
               </Stack>
             </Paper>
           </Box>
         </Container>
-
-        {/* Snackbar for notifications */}
-        <Snackbar
-          open={openSnackbar}
-          autoHideDuration={6000}
-          onClose={() => setOpenSnackbar(false)}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert 
-            onClose={() => setOpenSnackbar(false)} 
-            severity={snackbarSeverity}
-            sx={{ width: '100%' }}
-          >
-            {snackbarMessage}
-          </Alert>
-        </Snackbar>
       </Box>
     </ThemeProvider>
   );

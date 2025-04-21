@@ -29,9 +29,14 @@ import {
   Settings as SettingsIcon
 } from '@mui/icons-material';
 
+// 이 부분 수정 - Dashboard 컴포넌트 import
 import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/Login_Page';
+import SignupPage from './pages/Signup_Page';
 import axios from 'axios';
+
+// 여기 추가: API 서비스 import
+import { CourseAPI, MajorAPI, UserAPI, ProfessorAPI } from './services/api';
 
 const API_URL = 'http://127.0.0.1:8000';
 
@@ -41,6 +46,8 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// 나머지 테마 설정 부분
 
 // Create theme for consistent styling
 const theme = createTheme({
@@ -97,6 +104,17 @@ const ProtectedRoute = ({ children }) => {
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
+// Public only route - redirects to dashboard if logged in
+const PublicOnlyRoute = ({ children }) => {
+  const isAuthenticated = localStorage.getItem('user') !== null;
+  
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
   }
   
   return children;
@@ -207,6 +225,48 @@ const App = () => {
       </Box>
       <Divider />
       <NavMenu mobileView={true} onClose={handleDrawerToggle} />
+    </Box>
+  );
+
+  // Landing page for non-authenticated users
+  const LandingPage = () => (
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '80vh',
+        textAlign: 'center',
+        p: 4
+      }}
+    >
+      <Typography variant="h3" component="h1" gutterBottom>
+        Welcome to Degree<span style={{ color: theme.palette.primary.main }}>Flow</span>
+      </Typography>
+      <Typography variant="h5" component="h2" gutterBottom sx={{ maxWidth: 800, mb: 4 }}>
+        The modern platform for managing your academic journey
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          size="large"
+          component={Link}
+          to="/login"
+        >
+          Log in
+        </Button>
+        <Button 
+          variant="outlined" 
+          color="primary" 
+          size="large"
+          component={Link}
+          to="/signup"
+        >
+          Sign up
+        </Button>
+      </Box>
     </Box>
   );
 
@@ -332,14 +392,24 @@ const App = () => {
                   </Menu>
                 </>
               ) : (
-                <Button 
-                  color="primary" 
-                  variant="contained" 
-                  component={Link} 
-                  to="/login"
-                >
-                  Login
-                </Button>
+                <Box>
+                  <Button 
+                    color="inherit" 
+                    component={Link} 
+                    to="/login"
+                    sx={{ mr: 1 }}
+                  >
+                    Login
+                  </Button>
+                  <Button 
+                    color="primary" 
+                    variant="contained" 
+                    component={Link} 
+                    to="/signup"
+                  >
+                    Signup
+                  </Button>
+                </Box>
               )}
             </Toolbar>
           </AppBar>
@@ -366,14 +436,27 @@ const App = () => {
           <Box component="main" sx={{ flexGrow: 1 }}>
             <Routes>
               {/* Public routes */}
-              <Route path="/login" element={<LoginPage />} />
+              <Route path="/login" element={
+                <PublicOnlyRoute>
+                  <LoginPage />
+                </PublicOnlyRoute>
+              } />
+              <Route path="/signup" element={
+                <PublicOnlyRoute>
+                  <SignupPage />
+                </PublicOnlyRoute>
+              } />
+              
+              {/* Public landing page */}
+              <Route path="/" element={
+                user ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <LandingPage />
+                )
+              } />
               
               {/* Protected routes */}
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } />
               <Route path="/dashboard" element={
                 <ProtectedRoute>
                   <Dashboard />
@@ -416,6 +499,29 @@ const App = () => {
                   </Box>
                 </ProtectedRoute>
               } />
+              
+              {/* Forgot password route */}
+              <Route path="/forgot-password" element={
+                <PublicOnlyRoute>
+                  <Box p={4} textAlign="center">
+                    <Typography variant="h4" gutterBottom>
+                      Forgot Password
+                    </Typography>
+                    <Typography>
+                      Password recovery page coming soon.
+                    </Typography>
+                  </Box>
+                </PublicOnlyRoute>
+              } />
+              
+              {/* Catch all route - redirect to dashboard or landing page */}
+              <Route path="*" element={
+                user ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              } />
             </Routes>
           </Box>
 
@@ -449,8 +555,13 @@ const SchedulePage = () => {
     const fetchSchedule = async () => {
       try {
         setLoading(true);
-        const response = await api.get(`/get_semester_schedule_by_major_name?major_name=${majorName}&startingSem=Fall&startingYear=2023`);
-        setScheduleData(response.data);
+        // Use MajorAPI service with the updated parameters
+        const data = await MajorAPI.getSemesterScheduleByName(
+          majorName, 
+          'Fall',
+          '2023'
+        );
+        setScheduleData(data);
         setLoading(false);
       } catch (err) {
         console.error("Error fetching schedule:", err);

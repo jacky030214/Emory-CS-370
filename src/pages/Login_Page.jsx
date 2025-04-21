@@ -55,10 +55,10 @@ const Login_Page = () => {
       setLoading(true);
       setError('');
       
-      // 수정: FastAPI users 라우트에 맞게 로그인 엔드포인트 수정
+      // FastAPI users login endpoint
       const response = await axios.post(`${API_URL}/users/login`, {
         email: email,
-        input_pass: password  // 수정: FastAPI 백엔드의 파라미터명(input_pass)에 맞게 변경
+        input_pass: password 
       });
       
       // Store user info in localStorage
@@ -71,7 +71,7 @@ const Login_Page = () => {
       console.error('Login failed:', err);
       
       if (err.response) {
-        // 수정: FastAPI 오류 응답 처리
+        // FastAPI error response handling
         if (err.response.status === 401) {
           setError('Invalid password');
         } else if (err.response.status === 404) {
@@ -92,7 +92,7 @@ const Login_Page = () => {
     navigate('/signup');
   };
 
-  // Handle social login (currently just mocks the login)
+  // Handle social login
   const handleSocialLogin = (provider) => {
     setLoading(true);
     
@@ -161,7 +161,7 @@ const Login_Page = () => {
             }}
           >
             <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
-              Boost your degree with Degree<span style={{ color: '#ff6b00' }}>Flow</span>🚀
+              Welcome back to Degree<span style={{ color: '#ff6b00' }}>Flow</span>🚀
             </Typography>
 
             <Paper 
@@ -196,6 +196,11 @@ const Login_Page = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleLogin();
+                    }
+                  }}
                 />
                 <Stack 
                   direction="row" 
@@ -206,8 +211,8 @@ const Login_Page = () => {
                     fullWidth
                     variant="contained"
                     sx={{ 
-                      bgcolor: 'rgba(255, 255, 255, 0.1)',
-                      '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' }
+                      bgcolor: 'primary.main',
+                      '&:hover': { bgcolor: '#ff8a33' }
                     }}
                     onClick={handleLogin}
                     disabled={loading}
@@ -227,6 +232,16 @@ const Login_Page = () => {
                     Sign up
                   </Button>
                 </Stack>
+
+                <Box textAlign="center" mt={1}>
+                  <Button
+                    color="primary"
+                    size="small"
+                    onClick={() => navigate('/forgot-password')}
+                  >
+                    Forgot password?
+                  </Button>
+                </Box>
 
                 {/* Social Login Buttons */}
                 <Typography variant="body2" align="center" sx={{ mt: 2, mb: 1 }}>

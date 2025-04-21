@@ -59,11 +59,23 @@ export const CourseAPI = {
   // Get class by class ID (from course_mongodb)
   getClassByClassId: async (classId) => {
     try {
-      // Using the exact endpoint format shown in your screenshots
-      const response = await api.get(`/get_class_by_class_id?class_id=${encodeURIComponent(classId)}`);
+      // Updated to match the endpoint in the screenshot
+      const response = await api.get(`/get_class_by_class_id`, {
+        params: { class_id: classId }
+      });
       return response.data;
     } catch (error) {
       console.error(`Error fetching class with ID ${classId}:`, error);
+      throw error;
+    }
+  },
+   // Generate personalized schedule
+  generatePersonalizedSchedule: async (preferences) => {
+    try {
+      const response = await api.post('/generate_personalized_schedule', preferences);
+      return response.data;
+    } catch (error) {
+      console.error('Error generating personalized schedule:', error);
       throw error;
     }
   }
@@ -81,11 +93,14 @@ export const MajorAPI = {
     }
   },
   
-  // Get major requirements by major name
+  // Get major requirements by major name - updated to match the endpoint in the screenshot
   getMajorRequirementsByName: async (majorName) => {
     try {
       const response = await api.get('/get_major_requirement_by_major_name', {
-        params: { major: majorName }
+        params: { 
+          major_name: majorName,
+          collection: 'Major_Req_test' // Adding collection parameter as seen in your code
+        }
       });
       return response.data;
     } catch (error) {
@@ -94,12 +109,13 @@ export const MajorAPI = {
     }
   },
   
-  // Get semester schedule by major name
+  // Get semester schedule by major name - updated to match the endpoint in the screenshot
   getSemesterScheduleByName: async (majorName, startingSem = 'Fall', startingYear = '2024') => {
     try {
       const response = await api.get('/get_semester_schedule_by_major_name', {
         params: { 
           major_name: majorName,
+          collection: 'Major_Req_test', // Adding collection parameter
           startingSem: startingSem,
           startingYear: startingYear
         }
@@ -107,6 +123,24 @@ export const MajorAPI = {
       return response.data;
     } catch (error) {
       console.error(`Error fetching schedule for major ${majorName}:`, error);
+      throw error;
+    }
+  },
+  
+  // New method for getting schedule with general education requirements
+  getSemesterScheduleWithGER: async (majorName, startingSem = 'Fall', startingYear = '2024') => {
+    try {
+      const response = await api.get('/get_semester_schedule_withGER_by_major_name', {
+        params: { 
+          major_name: majorName,
+          collection: 'Major_Req_test',
+          startingSem: startingSem,
+          startingYear: startingYear
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching GER schedule for major ${majorName}:`, error);
       throw error;
     }
   }
@@ -124,10 +158,10 @@ export const UserAPI = {
     }
   },
   
-  // Register new user
+  // Register new user - updated to match the endpoint in the screenshot
   register: async (userData) => {
     try {
-      const response = await api.post('/users/', userData);
+      const response = await api.post('/users/create_user', userData);
       return response.data;
     } catch (error) {
       console.error('Error registering user:', error);
@@ -135,10 +169,13 @@ export const UserAPI = {
     }
   },
 
-  // Login user
-  login: async (credentials) => {
+  // Login user - updated to match the expected endpoint
+  login: async (email, password) => {
     try {
-      const response = await api.post('/users/login', credentials);
+      const response = await api.post('/users/login', {
+        email: email,
+        input_pass: password
+      });
       return response.data;
     } catch (error) {
       console.error('Error logging in:', error);
@@ -175,6 +212,30 @@ export const UserAPI = {
       return response.data;
     } catch (error) {
       console.error(`Error fetching user with email ${email}:`, error);
+      throw error;
+    }
+  },
+  
+  // Create schedule - updated to match the endpoint in the screenshot
+  createSchedule: async (scheduleData) => {
+    try {
+      const response = await api.post('/users/create_schedule', scheduleData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating schedule:', error);
+      throw error;
+    }
+  },
+  
+  // Get current schedule - updated to match the endpoint in the screenshot
+  getCurrentSchedule: async (userId) => {
+    try {
+      const response = await api.get('/users/get_current_schedule', {
+        params: { user_id: userId }
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching current schedule for user ${userId}:`, error);
       throw error;
     }
   }
