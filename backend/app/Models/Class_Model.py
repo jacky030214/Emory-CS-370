@@ -7,7 +7,8 @@ class Class_Model:
                  prereqs=None,
                  requirement_designation=None,
                  campus=None,
-                 class_desc=None):
+                 class_desc=None,
+                 timeslot=None):
         """
         :param class_id: Unique identifier for the class (string or int)
         :param class_name: Descriptive name/title of the class (string)
@@ -26,6 +27,7 @@ class Class_Model:
         self.requirement_designation = requirement_designation if requirement_designation else []
         self.campus = campus
         self.class_desc = class_desc
+        self.timeslot = timeslot
 
     def to_dict(self):
         """
@@ -39,7 +41,8 @@ class Class_Model:
             "prereqs": self.prereqs,
             "requirement_designation": self.requirement_designation,
             "campus": self.campus,
-            "class_desc": self.class_desc
+            "class_desc": self.class_desc,
+            "timeslot": self.timeslot
         }
 
     @staticmethod
@@ -55,7 +58,8 @@ class Class_Model:
             prereqs=data.get("prereqs", []),
             requirement_designation=data.get("requirement_designation", []),
             campus=data.get("campus"),
-            class_desc=data.get("class_desc")
+            class_desc=data.get("class_desc"), 
+            timeslot=data.get("timeslot")
         )
 
     def __repr__(self):
@@ -71,4 +75,4 @@ class Class_Model:
         )
         
     def __str__(self):
-        return f"{self.class_id}: ({self.credit_hours} credits)({self.recurring})"
+        return f"{self.class_id}: ({self.credit_hours} credits)({self.recurring})({self.timeslot})"
