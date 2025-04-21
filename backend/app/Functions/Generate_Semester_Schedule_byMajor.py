@@ -5,6 +5,7 @@ from pymongo import MongoClient
 #from Models.Major_Req_Model import MajorRequirement  # Your MajorRequirement model with from_dict() method
 from Models.Semester_Schedule_Model import Semester_Schedule  # Your simplified Semester_Schedule_Model class
 from Models.Class_Model import Class_Model
+from Models.Class_Detail_Model import Class_Detail
 from Functions.Get_Major_Req_byName import get_major_requirements_by_name
 from Functions.Get_Class_byID import get_class_by_id
 from pprint import pprint
@@ -345,7 +346,7 @@ def convert_schedule_to_obj(schedule, startYear, startsFall):
     return semester_schedule_objects
         
 
-def add_GER_course(schedule, isBulePlan = False, isEM = True):
+def add_GER_course(schedule, isBulePlan = False, isEM = True, takenClass = None):
     """
     Add GER classes into exsiting schedule 
     
@@ -432,7 +433,8 @@ def add_GER_course(schedule, isBulePlan = False, isEM = True):
             for cls in sem.classes:
                 allclasses_id.append(cls.class_id)
                 allclasses_obj.append(cls)
-        
+        for cls in takenClass:
+            allclasses_id.append(cls)
         for cls in allclasses_obj:
             if  "First Year Seminar with Race Ethnicity" in cls.requirement_designation:
                 area1 = area1-1
@@ -690,7 +692,564 @@ def prerequisites_satisfied(ger_class, sem_index, schedule):
             return False
     return True
 
+
+def Generate_Schedule_withTime(takenClasses, major_name):
+    uri="mongodb://localhost:27017/"
+    db_name="my_database"
+    major_req = get_major_requirements_by_name(major_name, uri, db_name)
+    if not major_req:
+        print(f"Major requirements not found for {major_name}")
+        return None
+
+    # Build list of required class objects.
+    required_classes_id = []
+    required_classes = []
+    for class_item in major_req.required_classes:
+        # If alternatives are provided, choose the first alternative.
+        if isinstance(class_item, list):
+            class_id = class_item[0]
+        else:
+            class_id = class_item
+
+        class_obj = get_class_by_id(class_id, uri, db_name)
+        if class_obj:
+            if class_obj.class_id in takenClasses:
+                continue
+            required_classes.append(class_obj)
+            required_classes_id.append(class_id)
+        else:
+            print(f"Warning: Class {class_id} not found in the database.")
+
+    # Build list of elective class objects.
+    # Choose first elective class from the list
+    elective_classes_id = []
+    for key in major_req.to_dict():
+        if key.startswith("elective"):
+            for elective_field in getattr(major_req, key):
+                for elective in elective_field:
+                    if isinstance(elective, list):
+                        elective_id = elective[0]
+                    else:
+                        elective_id = elective
+                    if get_class_by_id(elective_id, uri, db_name):
+                        if elective_id not in elective_classes_id:
+                            if elective_id not in required_classes_id:
+                                if elective_id == 'MATH275' or elective_id == 'MATH276':
+                                    continue
+                                if elective_id in takenClasses:
+                                    break
+                                elective_classes_id.append(elective_id)
+                                break
+                    else:
+                        print(f"Warning: Elective class {elective} not found in the database.")
+                    
+    elective_classes = []
+    for elective_id in elective_classes_id:
+        elective_obj = get_class_by_id(elective_id, uri, db_name)
+        if elective_obj:
+            elective_classes.append(elective_obj)
+        else:
+            print(f"Warning: Class {elective_obj} not found in the database.")
+    
+    
+    # Combine required and elective classes.
+    all_classes = []
+    all_classes = required_classes + elective_classes
+    
+
+    # --- Augment the class set with any missing prerequisites ---
+    # We'll use a dictionary mapping class_id -> class_obj.
+    all_classes_dict = {cls.class_id: cls for cls in all_classes}
+    
+    def add_missing_prereqs(cls_obj, all_dict):
+        groups = []
+        prereqs = getattr(cls_obj, "prereqs", [])
+        if isinstance(prereqs, str):
+            prereqs = [prereqs]
+        for group_str in prereqs:
+            # Now group_str is the full string, not a single character.
+            if ";" in group_str:
+                parts = [p.strip() for p in group_str.split(";") if p.strip()]
+            else:
+                parts = [group_str.strip()]
+            for part in parts:
+                if " or " in part:
+                    alternatives = [p.strip() for p in part.split(" or ") if p.strip()]
+                    if not any(item in all_dict for item in alternatives):
+                        for pre in alternatives:
+                            pre_obj = get_class_by_id(pre, uri, db_name)
+                            if pre_obj:
+                                if pre_obj.class_id in takenClasses:
+                                    break
+                                all_dict[pre_obj.class_id] = pre_obj
+                                add_missing_prereqs(pre_obj, all_dict)
+                                break
+                            else:
+                                print(f"Warning: Prerequisite class {pre} not found in the database.")
+                else:
+                    pre = part
+                    if pre not in (all_dict and takenClasses):
+                        pre_obj = get_class_by_id(pre, uri, db_name)
+                        if pre_obj:
+                            all_dict[pre_obj.class_id] = pre_obj
+                            add_missing_prereqs(pre_obj, all_dict)
+                        else:
+                            print(f"Warning: Prerequisite class {pre} not found in the database.")
+                
+
+    for cls in list(all_classes_dict.values()):
+        add_missing_prereqs(cls, all_classes_dict)
+    # Rebuild our full list.
+    all_classes = list(all_classes_dict.values())
+
+    # Build a mapping from class_id to class object.
+    class_dict = {cls.class_id: cls for cls in all_classes}
+    
+    # Build prerequisite groups.
+    # For each class, assume cls.prereqs is a list of strings like:
+    # ["Math210 or Math211", "Math221", "CS170 or Math170"]
+    direct_prereqs = {}
+    for cls in all_classes:
+        direct = set()
+        prereqs = getattr(cls, "prereqs", [])
+        # Ensure prereqs is a list (if it's a string, make it a single-element list)
+        if isinstance(prereqs, str):
+            prereqs = [prereqs]
+        for group_str in prereqs:
+            # Now group_str is the full string, not a single character.
+            if ";" in group_str:
+                parts = [p.strip() for p in group_str.split(";") if p.strip()]
+            else:
+                parts = [group_str.strip()]
+            for part in parts:
+                if " or " in part:
+                    candidate = [p.strip() for p in part.split(" or ") if p.strip()]
+                    for item in candidate:
+                        if item in class_dict:
+                            direct.add(item)
+                else:
+                    candidate = part
+                    if candidate in class_dict:
+                        direct.add(candidate)
+        direct_prereqs[cls.class_id] = direct
         
+        
+    # --- Compute transitive prerequisites using DFS ---
+    memo = {}
+    def compute_transitive(cid):
+        if cid in memo:
+            return memo[cid]
+        trans = set(direct_prereqs.get(cid, []))
+        for pre in direct_prereqs.get(cid, []):
+            trans |= compute_transitive(pre)
+        memo[cid] = trans
+        return trans
+
+    transitive_prereqs = {cid: compute_transitive(cid) for cid in class_dict}
+        
+        
+    # Sort classes by number of prerequisite groups (fewer groups first)
+    sorted_classes = sorted(all_classes, key=lambda cls: len(transitive_prereqs.get(cls.class_id, [])))
+    
+    # Backtracking algorithm.
+    assignment = {}  # Mapping: class_id -> semester (1-indexed)
+    semester_credits = [0]
+    result = None
+
+    def prerequisites_satisfied(cls, candidate_sem):
+        # All transitive prerequisites must be scheduled in a semester before candidate_sem.
+        for pre in transitive_prereqs.get(cls.class_id, set()):
+            if pre not in assignment or assignment[pre] >= candidate_sem:
+                return False
+        return True
+    all_class_id = []
+    for cls in all_classes:
+        all_class_id.append(cls.class_id)
+
+    min_credits = 0
+    num_semesters = 8
+    startingSemester = "Fall"
+    semester_credits = [0] * num_semesters
+    max_credits = 19
+    
+    def backtrack(i):
+        nonlocal result
+        if i == len(sorted_classes):
+            if all(semester_credits[s] >= min_credits for s in range(num_semesters)):
+                result = assignment.copy()
+                return True
+            return False
+        
+        cls = sorted_classes[i]
+        if startingSemester == "Fall":
+            isFall = True
+        else:
+            isFall = False
+        # cls_rec = get_class_by_id(cls.class_id, uri, db_name).recurring
+        for sem in range(1, num_semesters + 1):
+            if not prerequisites_satisfied(cls, sem):
+                isFall = not isFall
+                continue
+            if semester_credits[sem - 1] + cls.credit_hours > max_credits:
+                isFall = not isFall
+                continue
+            if (cls.recurring == "fall" ) and not isFall:
+                isFall = not isFall
+                continue
+            if (cls.recurring == "spring" ) and isFall:
+                isFall = not isFall
+                continue            
+            assignment[cls.class_id] = sem
+            semester_credits[sem - 1] += cls.credit_hours
+            if backtrack(i + 1):
+                return True
+            del assignment[cls.class_id]
+            semester_credits[sem - 1] -= cls.credit_hours
+        return False
+
+    if not backtrack(0):
+        print("No valid schedule found!")
+        return None
+
+    # Build final schedule: list of semesters (each a list of class objects)
+    schedule = [[] for _ in range(num_semesters)]
+    for cls in sorted_classes:
+        sem = result[cls.class_id]
+        schedule[sem - 1].append(cls)
+    schedule = convert_schedule_to_obj(schedule, startYear=0, startsFall=True)
+    schedule_GER = add_GER_course(schedule = schedule, takenClass=takenClasses)
+    all_classes_id = []
+    for sem in schedule_GER:
+        for cls in sem.classes:
+            all_classes_id.append(cls.class_id)
+            
+
+        
+
+    
+    def prerequisites_satisfied(section):
+        for pre in transitive_prereqs.get(section.course_code, set()):
+            if pre not in takenClasses:
+                return False
+        return True
+    
+    def backtrack(i, current_schedule, current_credits):
+        nonlocal best_schedule
+        # If exact match, we return immediately.
+        if current_credits == max_credits:
+            best_schedule = current_schedule
+            best_credits = current_credits
+            return True  # perfect schedule found
+        
+        if i == len(all_classes_id):
+            # End of list; update best if better.
+            if current_credits > best_schedule._total_credit_hours:
+                best_schedule = current_schedule
+                best_credits = current_credits
+            return False
+        client = MongoClient(uri)
+        db = client[db_name]
+        classes_detail_collection = db["Class_Detail"]
+        # Option 1: Try to add a section for course_ids[i]
+        found_solution = False
+        course_id = all_classes_id[i]
+        all_section = []
+        doc = list(classes_detail_collection.find({"course_code": course_id}))
+        j=0
+        while (j < len(doc)):
+            sec_doc = doc[j]
+            if(sec_doc):
+                sec_obj = Class_Detail.from_dict(sec_doc)
+                all_section.append(sec_obj)
+                j+=1
+            else:
+                break
+        for section in all_section:
+            # Check if prerequisites are met.
+            if not prerequisites_satisfied(section):
+                continue
+            # Check if adding this section would exceed max_credit_hours.
+            if current_credits + section.credit_hours > max_credits:
+                continue
+            # Check for time conflicts with already scheduled sections.
+            conflict = False
+            for scheduled in current_schedule.classes:
+                if section.meeting_time == scheduled.meeting_time:
+                    conflict = True
+                    break
+            if conflict:
+                continue
+            # Try adding this section.
+            current_schedule.classes.append(section)
+            current_schedule._total_credit_hours += section.credit_hours
+            if backtrack(i + 1, current_schedule, current_credits + section.credit_hours):
+                return True  # exit early if perfect schedule found
+            # Backtrack.
+            popped = current_schedule.classes.pop()
+            current_schedule._total_credit_hours -= popped.credit_hours
+
+        # Option 2: Skip this course (if no section fits or if you want to allow a subset selection)
+        if backtrack(i + 1, current_schedule, current_credits):
+            return True
+        
+        return found_solution
+
+    best_schedule = Semester_Schedule(year=0, semester="Fall", classes=[])
+    best_credits = 0
+    
+    backtrack(0, best_schedule, 0)
+
+    for cls in best_schedule.classes:
+        all_classes_id.remove(cls.course_code)
+    print(best_schedule)
+    print(all_classes_id)
+    return [best_schedule, all_classes_id]
+
+def generate_future_schedule(major_name, num_semesters, takenClasses = None, futureClasses = None, min_credits=12, max_credits=19, startingSemester = "Fall"):
+    uri="mongodb://localhost:27017/"
+    db_name="my_database"
+    major_req = get_major_requirements_by_name(major_name, uri, db_name)
+    if not major_req:
+        print(f"Major requirements not found for {major_name}")
+        return None
+
+    # Build list of required class objects.
+    required_classes_id = []
+    required_classes = []
+    for class_item in major_req.required_classes:
+        # If alternatives are provided, choose the first alternative.
+        if isinstance(class_item, list):
+            class_id = class_item[0]
+        else:
+            class_id = class_item
+
+        class_obj = get_class_by_id(class_id, uri, db_name)
+        if class_obj:
+            if class_obj.class_id in takenClasses:
+                continue
+            required_classes.append(class_obj)
+            required_classes_id.append(class_id)
+        else:
+            print(f"Warning: Class {class_id} not found in the database.")
+
+    # Build list of elective class objects.
+    # Choose first elective class from the list
+    elective_classes_id = []
+    for key in major_req.to_dict():
+        if key.startswith("elective"):
+            for elective_field in getattr(major_req, key):
+                for elective in elective_field:
+                    if isinstance(elective, list):
+                        elective_id = elective[0]
+                    else:
+                        elective_id = elective
+                    if get_class_by_id(elective_id, uri, db_name):
+                        if elective_id not in elective_classes_id:
+                            if elective_id not in required_classes_id:
+                                if elective_id == 'MATH275' or elective_id == 'MATH276':
+                                    continue
+                                if elective_id in takenClasses:
+                                    break
+                                elective_classes_id.append(elective_id)
+                                break
+                    else:
+                        print(f"Warning: Elective class {elective} not found in the database.")
+                    
+    elective_classes = []
+    for elective_id in elective_classes_id:
+        elective_obj = get_class_by_id(elective_id, uri, db_name)
+        if elective_obj:
+            elective_classes.append(elective_obj)
+        else:
+            print(f"Warning: Class {elective_obj} not found in the database.")
+    
+    
+    # Combine required and elective classes.
+    all_classes = []
+    if futureClasses:
+        for cls_id in futureClasses:
+            cls = get_class_by_id(cls_id)
+            if cls:          
+                all_classes.append(get_class_by_id(cls))
+            else: 
+                print(f"Warning: Class {elective_obj} not found in the database.")
+    for cls in (required_classes and elective_classes):
+        if cls in all_classes: continue
+        all_classes.append(cls)
+
+    
+        
+    
+
+    # --- Augment the class set with any missing prerequisites ---
+    # We'll use a dictionary mapping class_id -> class_obj.
+    all_classes_dict = {cls.class_id: cls for cls in all_classes}
+    
+    def add_missing_prereqs(cls_obj, all_dict):
+        groups = []
+        prereqs = getattr(cls_obj, "prereqs", [])
+        if isinstance(prereqs, str):
+            prereqs = [prereqs]
+        for group_str in prereqs:
+            # Now group_str is the full string, not a single character.
+            if ";" in group_str:
+                parts = [p.strip() for p in group_str.split(";") if p.strip()]
+            else:
+                parts = [group_str.strip()]
+            for part in parts:
+                if " or " in part:
+                    alternatives = [p.strip() for p in part.split(" or ") if p.strip()]
+                    if not any(item in all_dict for item in alternatives):
+                        for pre in alternatives:
+                            pre_obj = get_class_by_id(pre, uri, db_name)
+                            if pre_obj:
+                                if pre_obj.class_id in takenClasses:
+                                    break
+                                all_dict[pre_obj.class_id] = pre_obj
+                                add_missing_prereqs(pre_obj, all_dict)
+                                break
+                            else:
+                                print(f"Warning: Prerequisite class {pre} not found in the database.")
+                else:
+                    pre = part
+                    if pre not in (all_dict and takenClasses):
+                        pre_obj = get_class_by_id(pre, uri, db_name)
+                        if pre_obj:
+                            all_dict[pre_obj.class_id] = pre_obj
+                            add_missing_prereqs(pre_obj, all_dict)
+                        else:
+                            print(f"Warning: Prerequisite class {pre} not found in the database.")
+                
+
+    for cls in list(all_classes_dict.values()):
+        add_missing_prereqs(cls, all_classes_dict)
+    # Rebuild our full list.
+    all_classes = list(all_classes_dict.values())
+
+    # Build a mapping from class_id to class object.
+    class_dict = {cls.class_id: cls for cls in all_classes}
+    
+    # Build prerequisite groups.
+    # For each class, assume cls.prereqs is a list of strings like:
+    # ["Math210 or Math211", "Math221", "CS170 or Math170"]
+    direct_prereqs = {}
+    for cls in all_classes:
+        direct = set()
+        prereqs = getattr(cls, "prereqs", [])
+        # Ensure prereqs is a list (if it's a string, make it a single-element list)
+        if isinstance(prereqs, str):
+            prereqs = [prereqs]
+        for group_str in prereqs:
+            # Now group_str is the full string, not a single character.
+            if ";" in group_str:
+                parts = [p.strip() for p in group_str.split(";") if p.strip()]
+            else:
+                parts = [group_str.strip()]
+            for part in parts:
+                if " or " in part:
+                    candidate = [p.strip() for p in part.split(" or ") if p.strip()]
+                    for item in candidate:
+                        if item in class_dict:
+                            direct.add(item)
+                else:
+                    candidate = part
+                    if candidate in class_dict:
+                        direct.add(candidate)
+        direct_prereqs[cls.class_id] = direct
+        
+        
+    # --- Compute transitive prerequisites using DFS ---
+    memo = {}
+    def compute_transitive(cid):
+        if cid in memo:
+            return memo[cid]
+        trans = set(direct_prereqs.get(cid, []))
+        for pre in direct_prereqs.get(cid, []):
+            trans |= compute_transitive(pre)
+        memo[cid] = trans
+        return trans
+
+    transitive_prereqs = {cid: compute_transitive(cid) for cid in class_dict}
+        
+        
+    # Sort classes by number of prerequisite groups (fewer groups first)
+    sorted_classes = sorted(all_classes, key=lambda cls: len(transitive_prereqs.get(cls.class_id, [])))
+    
+    # Backtracking algorithm.
+    assignment = {}  # Mapping: class_id -> semester (1-indexed)
+    semester_credits = [0]
+    result = None
+
+    def prerequisites_satisfied(cls, candidate_sem):
+        # All transitive prerequisites must be scheduled in a semester before candidate_sem.
+        for pre in transitive_prereqs.get(cls.class_id, set()):
+            if pre not in assignment or assignment[pre] >= candidate_sem:
+                return False
+        return True
+    all_class_id = []
+    for cls in all_classes:
+        all_class_id.append(cls.class_id)
+
+    min_credits = 0
+    num_semesters = 8
+    startingSemester = "Fall"
+    semester_credits = [0] * num_semesters
+    max_credits = 19
+    
+    def backtrack(i):
+        nonlocal result
+        if i == len(sorted_classes):
+            if all(semester_credits[s] >= min_credits for s in range(num_semesters)):
+                result = assignment.copy()
+                return True
+            return False
+        
+        cls = sorted_classes[i]
+        if startingSemester == "Fall":
+            isFall = True
+        else:
+            isFall = False
+        # cls_rec = get_class_by_id(cls.class_id, uri, db_name).recurring
+        for sem in range(1, num_semesters + 1):
+            if not prerequisites_satisfied(cls, sem):
+                isFall = not isFall
+                continue
+            if semester_credits[sem - 1] + cls.credit_hours > max_credits:
+                isFall = not isFall
+                continue
+            if (cls.recurring == "fall" ) and not isFall:
+                isFall = not isFall
+                continue
+            if (cls.recurring == "spring" ) and isFall:
+                isFall = not isFall
+                continue            
+            assignment[cls.class_id] = sem
+            semester_credits[sem - 1] += cls.credit_hours
+            if backtrack(i + 1):
+                return True
+            del assignment[cls.class_id]
+            semester_credits[sem - 1] -= cls.credit_hours
+        return False
+
+    if not backtrack(0):
+        print("No valid schedule found!")
+        return None
+
+    # Build final schedule: list of semesters (each a list of class objects)
+    schedule = [[] for _ in range(num_semesters)]
+    for cls in sorted_classes:
+        sem = result[cls.class_id]
+        schedule[sem - 1].append(cls)
+    schedule = convert_schedule_to_obj(schedule, startYear=0, startsFall=True)
+    schedule_GER = add_GER_course(schedule = schedule, takenClass=takenClasses)
+    
+    all_classes_id = []
+    for sem in schedule_GER:
+        print(sem)
+        for cls in sem.classes:
+            all_classes_id.append(cls.class_id)
+    
+
     
     
     
@@ -698,9 +1257,9 @@ def prerequisites_satisfied(ger_class, sem_index, schedule):
 
 # Example usage:
 if __name__ == "__main__":
-    
-    
-        
+    # Generate_Schedule_withTime(["QTM110","MATH111","MATH112","QTM150","QTM151"], "Bachelor of Science in Applied Mathematics and Statistics")
+    generate_future_schedule(major_name="Bachelor of Science in Applied Mathematics and Statistics", num_semesters=7, takenClasses=["QTM110","MATH111","MATH112","QTM150","QTM151"])
+    """
     major_input = "Bachelor of Science in Applied Mathematics and Statistics"
     full_schedule = generate_full_schedule(major_input, num_semesters=8, min_credits=0, max_credits=18)
     StartYear = 2022
@@ -729,6 +1288,7 @@ if __name__ == "__main__":
             print(sem)
     else:
         print("Failed to generate a full schedule.")
+    """    
         
     # schedule = generate_dummy_semester_schedule(major_input, year=2025, semester="Fall", elective_count=1)
     # if schedule:

@@ -16,6 +16,7 @@
     "@mui/material": "^6.4.8",
     "@mui/system": "^6.4.8",
     "axios": "^1.8.1",
+    "cs370-frontend": "file:",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.4.0",

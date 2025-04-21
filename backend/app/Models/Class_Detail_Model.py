@@ -1,26 +1,30 @@
 # class_detail.py
 
-from Backend.Backend.Models.Class_Model import Class_Model
+from Models.Class_Model import Class_Model
 
 class Class_Detail(Class_Model):
     def __init__(
         self,
-        class_id,
-        class_num,         # New variable for the class number
-        class_name,
-        recurring,
+        course_code,
+        course_section,         
+        course_crn,
+        course_title,
         credit_hours,
-        prereqs=None,
-        requirement_designation=None,
-        campus=None,
-        class_desc=None,
-        section=None,
-        professor=None,
-        time_slot=None,
-        days=None,
-        class_size=None,
-        offering=None,
-        room=None
+        grading_mode,
+        instruction_method,
+        semesters_offered,
+        dates,
+        course_description,
+        instructor_email,
+        instructor_name,
+        meeting_time,
+        meeting_location,
+        final_exam,
+        class_type,
+        campus,
+        prerequisites,
+        requirement_designation
+
     ):
         """
         Inherit from Class_Model, plus add details about a specific section.
@@ -44,43 +48,53 @@ class Class_Detail(Class_Model):
         :param room: Room number or location.
         """
         # Call the parent constructor
-        super().__init__(
-            class_id=class_id,
-            class_name=class_name,
-            recurring=recurring,
-            credit_hours=credit_hours,
-            prereqs=prereqs,
-            requirement_designation=requirement_designation,
-            campus=campus,
-            class_desc=class_desc
-        )
 
         # Add the new variable and subclass-specific attributes
-        self.class_num = class_num
-        self.section = section
-        self.professor = professor
-        self.time_slot = time_slot
-        self.days = days if days else []
-        self.class_size = class_size
-        self.offering = offering
-        self.room = room
+        self.course_code = course_code
+        self.course_section = course_section       
+        self.course_crn = course_crn
+        self.course_title = course_title
+        self.credit_hours = int(credit_hours)
+        self.grading_mode = grading_mode
+        self.instruction_method = instruction_method
+        self.semesters_offered = semesters_offered
+        self.dates = dates
+        self.course_description = course_description
+        self.instructor_email = instructor_email
+        self.instructor_name = instructor_name
+        self.meeting_time = meeting_time
+        self.meeting_location = meeting_location
+        self.final_exam = final_exam
+        self.class_type = class_type
+        self.campus = campus
+        self.prerequisites = prerequisites
+        self.requirement_designation = requirement_designation
 
     def to_dict(self):
         """
         Extend the parent's dictionary representation with section-specific details.
         """
-        base_dict = super().to_dict()
-        base_dict.update({
-            "class_num": self.class_num,
-            "section": self.section,
-            "professor": self.professor,
-            "time_slot": self.time_slot,
-            "days": self.days,
-            "class_size": self.class_size,
-            "offering": self.offering,
-            "room": self.room
-        })
-        return base_dict
+        return {
+            "course_code": self.course_code,
+            "course_section": self.course_section,         
+            "course_crn": self.course_crn,
+            "course_title": self.course_title,
+            "credit_hours": self.credit_hours,
+            "grading_mode": self.grading_mode,
+            "instruction_method": self.instruction_method,
+            "semesters_offered": self.semesters_offered,
+            "dates": self.dates,
+            "course_description": self.course_description,
+            "instructor_email": self.instructor_email,
+            "instructor_name": self.instructor_name,
+            "meeting_time": self.meeting_time,
+            "meeting_location": self.meeting_location,
+            "final_exam": self.final_exam,
+            "class_type": self.class_type,
+            "campus": self.campus,
+            "prerequisites": self.prerequisites,
+            "requirement_designation": self.requirement_designation
+        }
 
     @staticmethod
     def from_dict(data):
@@ -88,22 +102,25 @@ class Class_Detail(Class_Model):
         Build a Class_Detail object from a dictionary, including both parent and child attributes.
         """
         return Class_Detail(
-            class_id=data.get("class_id"),
-            class_num=data.get("class_num"),
-            class_name=data.get("class_name"),
-            recurring=data.get("recurring"),
-            credit_hours=data.get("credit_hours"),
-            prereqs=data.get("prereqs", []),
-            requirement_designation=data.get("requirement_designation", []),
-            campus=data.get("campus"),
-            class_desc=data.get("class_desc"),
-            section=data.get("section"),
-            professor=data.get("professor"),
-            time_slot=data.get("time_slot"),
-            days=data.get("days", []),
-            class_size=data.get("class_size"),
-            offering=data.get("offering"),
-            room=data.get("room")
+            course_code = data.get("course_code"),
+            course_section = data.get("course_section"),         
+            course_crn = data.get("course_crn"),
+            course_title = data.get("course_title"),
+            credit_hours = data.get("credit_hours"),
+            grading_mode = data.get("grading_mode"),
+            instruction_method = data.get("instruction_method"),
+            semesters_offered = data.get("semesters_offered"),
+            dates = data.get("dates"),
+            course_description = data.get("course_description"),
+            instructor_email = data.get("instructor_email"),
+            instructor_name = data.get("instructor_name"),
+            meeting_time = data.get("meeting_time"),
+            meeting_location = data.get("meeting_location"),
+            final_exam = data.get("final_exam"),
+            class_type = data.get("class_type"),
+            campus = data.get("campus"),
+            prerequisites = data.get("prerequisites"),
+            requirement_designation = data.get("requirement_designation")
         )
 
     def __repr__(self):
@@ -112,13 +129,12 @@ class Class_Detail(Class_Model):
         """
         parent_repr = super().__repr__()
         return (
-            f"{parent_repr[:-1]}, "
-            f"class_num='{self.class_num}', "
-            f"section='{self.section}', "
-            f"professor='{self.professor}', "
-            f"time_slot='{self.time_slot}', "
-            f"days={self.days}, "
-            f"class_size={self.class_size}, "
-            f"offering='{self.offering}', "
-            f"room='{self.room}')"
+            f"course_code='{self.course_code}', "
+            f"course_title='{self.course_title}', "
+            f"course_section='{self.course_section}', "
+            f"instructor_name='{self.instructor_name}', "
+            f"meeting_time='{self.meeting_time}', "
         )
+
+    def __str__(self):
+            return f"{self.course_code}: ({self.credit_hours} credits)({self.meeting_time})({self.instructor_name})"
