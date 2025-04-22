@@ -29,13 +29,13 @@ import {
   Settings as SettingsIcon
 } from '@mui/icons-material';
 
-// 이 부분 수정 - Dashboard 컴포넌트 import
+// Import pages
 import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/Login_Page';
 import SignupPage from './pages/Signup_Page';
 import axios from 'axios';
 
-// 여기 추가: API 서비스 import
+// API 서비스 import
 import { CourseAPI, MajorAPI, UserAPI, ProfessorAPI } from './services/api';
 
 const API_URL = 'http://127.0.0.1:8000';
@@ -46,8 +46,6 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
-// 나머지 테마 설정 부분
 
 // Create theme for consistent styling
 const theme = createTheme({
@@ -97,6 +95,120 @@ const theme = createTheme({
     },
   },
 });
+
+// Define SchedulePage and CourseListPage components BEFORE they are used in the App component
+const SchedulePage = () => {
+  const [majorName, setMajorName] = useState("Bachelor of Arts in Mathematics");
+  const [scheduleData, setScheduleData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      try {
+        setLoading(true);
+        // Use MajorAPI service with the updated parameters
+        const data = await MajorAPI.getSemesterScheduleByName(
+          majorName, 
+          'Fall',
+          '2023'
+        );
+        setScheduleData(data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching schedule:", err);
+        setError("Failed to load schedule data");
+        setLoading(false);
+      }
+    };
+
+    fetchSchedule();
+  }, [majorName]);
+
+  if (loading) return <div>Loading schedule...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <div>
+      {Array.isArray(scheduleData) ? (
+        scheduleData.map((semester, index) => (
+          <Box key={index} sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+            <Typography variant="h6">
+              {semester.semester} {semester.year} - {semester.total_credit_hours} Credits
+            </Typography>
+            {semester.classes && semester.classes.length > 0 ? (
+              <Box sx={{ mt: 2 }}>
+                {semester.classes.map((course, courseIndex) => (
+                  <Box key={courseIndex} sx={{ mb: 1, p: 1, borderLeft: '3px solid', borderColor: 'primary.main' }}>
+                    <Typography variant="subtitle1">
+                      {course.class_name} ({course.class_id})
+                    </Typography>
+                    <Typography variant="body2">
+                      {course.credit_hours} credits | {course.professor || 'TBA'}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body2">No classes for this semester</Typography>
+            )}
+          </Box>
+        ))
+      ) : (
+        <Typography>No schedule data available</Typography>
+      )}
+    </div>
+  );
+};
+
+const CourseListPage = () => {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        setLoading(true);
+        // This assumes CourseAPI has a getAll method
+        const data = await CourseAPI.getAll();
+        setCourses(data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching courses:", err);
+        setError("Failed to load course data");
+        setLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
+
+  if (loading) return <Box p={4}><Typography>Loading courses...</Typography></Box>;
+  if (error) return <Box p={4}><Typography color="error">Error: {error}</Typography></Box>;
+
+  return (
+    <Box>
+      {courses.length > 0 ? (
+        courses.map((course, index) => (
+          <Box key={index} sx={{ mb: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+            <Typography variant="h6">
+              {course.name} ({course.course_id})
+            </Typography>
+            <Typography variant="body2">
+              {course.credit_hours} credits | Professor: {course.professor || 'TBA'}
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              {course.description || 'No description available'}
+            </Typography>
+          </Box>
+        ))
+      ) : (
+        <Typography>No courses available</Typography>
+      )}
+    </Box>
+  );
+};
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -158,6 +270,48 @@ const NavMenu = ({ mobileView = false, onClose = null }) => {
     </List>
   );
 };
+
+// Landing page for non-authenticated users
+const LandingPage = () => (
+  <Box 
+    sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '80vh',
+      textAlign: 'center',
+      p: 4
+    }}
+  >
+    <Typography variant="h3" component="h1" gutterBottom>
+      Welcome to Degree<span style={{ color: theme.palette.primary.main }}>Flow</span>
+    </Typography>
+    <Typography variant="h5" component="h2" gutterBottom sx={{ maxWidth: 800, mb: 4 }}>
+      The modern platform for managing your academic journey
+    </Typography>
+    <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
+      <Button 
+        variant="contained" 
+        color="primary" 
+        size="large"
+        component={Link}
+        to="/login"
+      >
+        Log in
+      </Button>
+      <Button 
+        variant="outlined" 
+        color="primary" 
+        size="large"
+        component={Link}
+        to="/signup"
+      >
+        Sign up
+      </Button>
+    </Box>
+  </Box>
+);
 
 // Main App component
 const App = () => {
@@ -225,48 +379,6 @@ const App = () => {
       </Box>
       <Divider />
       <NavMenu mobileView={true} onClose={handleDrawerToggle} />
-    </Box>
-  );
-
-  // Landing page for non-authenticated users
-  const LandingPage = () => (
-    <Box 
-      sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '80vh',
-        textAlign: 'center',
-        p: 4
-      }}
-    >
-      <Typography variant="h3" component="h1" gutterBottom>
-        Welcome to Degree<span style={{ color: theme.palette.primary.main }}>Flow</span>
-      </Typography>
-      <Typography variant="h5" component="h2" gutterBottom sx={{ maxWidth: 800, mb: 4 }}>
-        The modern platform for managing your academic journey
-      </Typography>
-      <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          size="large"
-          component={Link}
-          to="/login"
-        >
-          Log in
-        </Button>
-        <Button 
-          variant="outlined" 
-          color="primary" 
-          size="large"
-          component={Link}
-          to="/signup"
-        >
-          Sign up
-        </Button>
-      </Box>
     </Box>
   );
 
@@ -477,7 +589,7 @@ const App = () => {
               {/* Future routes would be added here */}
               <Route path="/courses" element={
                 <ProtectedRoute>
-                  <Box p={4} textAlign="center">
+                  <Box p={4}>
                     <Typography variant="h4" gutterBottom>
                       Available Courses
                     </Typography>
@@ -487,15 +599,25 @@ const App = () => {
               } />
               <Route path="/profile" element={
                 <ProtectedRoute>
-                  <Box p={4} textAlign="center">
-                    Profile page coming soon.
+                  <Box p={4}>
+                    <Typography variant="h4" gutterBottom>
+                      User Profile
+                    </Typography>
+                    <Typography>
+                      Profile page coming soon.
+                    </Typography>
                   </Box>
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={
                 <ProtectedRoute>
-                  <Box p={4} textAlign="center">
-                    Settings page coming soon.
+                  <Box p={4}>
+                    <Typography variant="h4" gutterBottom>
+                      User Settings
+                    </Typography>
+                    <Typography>
+                      Settings page coming soon.
+                    </Typography>
                   </Box>
                 </ProtectedRoute>
               } />
@@ -503,7 +625,7 @@ const App = () => {
               {/* Forgot password route */}
               <Route path="/forgot-password" element={
                 <PublicOnlyRoute>
-                  <Box p={4} textAlign="center">
+                  <Box p={4}>
                     <Typography variant="h4" gutterBottom>
                       Forgot Password
                     </Typography>
@@ -542,80 +664,6 @@ const App = () => {
         </Box>
       </Router>
     </ThemeProvider>
-  );
-};
-
-const SchedulePage = () => {
-  const [majorName, setMajorName] = useState("Bachelor of Arts in Mathematics");
-  const [scheduleData, setScheduleData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchSchedule = async () => {
-      try {
-        setLoading(true);
-        // Use MajorAPI service with the updated parameters
-        const data = await MajorAPI.getSemesterScheduleByName(
-          majorName, 
-          'Fall',
-          '2023'
-        );
-        setScheduleData(data);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching schedule:", err);
-        setError("Failed to load schedule data");
-        setLoading(false);
-      }
-    };
-
-    fetchSchedule();
-  }, [majorName]);
-
-  if (loading) return <div>Loading schedule...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  return (
-    <div>
-      {Array.isArray(scheduleData) ? (
-        scheduleData.map((semester, index) => (
-          <Box key={index} sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-            <Typography variant="h6">
-              {semester.semester} {semester.year} - {semester.total_credit_hours} Credits
-            </Typography>
-            {semester.classes && semester.classes.length > 0 ? (
-              <Box sx={{ mt: 2 }}>
-                {semester.classes.map((course, courseIndex) => (
-                  <Box key={courseIndex} sx={{ mb: 1, p: 1, borderLeft: '3px solid', borderColor: 'primary.main' }}>
-                    <Typography variant="subtitle1">
-                      {course.class_name} ({course.class_id})
-                    </Typography>
-                    <Typography variant="body2">
-                      {course.credit_hours} credits | {course.professor || 'TBA'}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            ) : (
-              <Typography variant="body2">No classes for this semester</Typography>
-            )}
-          </Box>
-        ))
-      ) : (
-        <Typography>No schedule data available</Typography>
-      )}
-    </div>
-  );
-};
-
-const CourseListPage = () => {
-  return (
-    <div>
-      <Typography variant="body1">
-        Course list will be displayed here. This would fetch data from the courses endpoints.
-      </Typography>
-    </div>
   );
 };
 

@@ -94,6 +94,23 @@ export const CourseAPI = {
       console.error('Error getting top courses:', error);
       throw error;
     }
+  },
+  // CourseAPI 객체 내부에 추가 (다른 메소드들 사이에 배치)
+  generateFutureSchedule: async (majorName, startingSem = 'Fall', startingYear = '2026', takenCourses = '') => {
+    try {
+      const response = await api.get('/generate_future_schedule', {
+        params: { 
+          major_name: majorName,
+          startingSem: startingSem,
+          startingYear: startingYear,
+          taken: takenCourses
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error generating future schedule for ${majorName}:`, error);
+      throw error;
+    }
   }
 };
 

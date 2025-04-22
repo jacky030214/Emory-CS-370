@@ -75,7 +75,7 @@ const Dashboard = () => {
   });
   
   // Major schedule states
-  const [selectedMajor, setSelectedMajor] = useState('Bachelor of Arts in Mathematics');
+  const [selectedMajor, setSelectedMajor] = useState('Bachelor of Science in Applied Mathematics');
   const [startingSem, setStartingSem] = useState('Fall');
   const [startingYear, setStartingYear] = useState('2025');
   const [scheduleData, setScheduleData] = useState([]);
@@ -113,6 +113,11 @@ const Dashboard = () => {
   
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  // Future schedule states - 다른 state 변수들과 함께 배치
+  const [futureScheduleData, setFutureScheduleData] = useState([]);
+  const [loadingFutureSchedule, setLoadingFutureSchedule] = useState(false);
+  const [futureScheduleError, setFutureScheduleError] = useState('');
   
   // Available majors
   const majors = [
@@ -401,6 +406,48 @@ const Dashboard = () => {
     }
   };
 
+  const handleGenerateFutureSchedule = async () => {
+    if (!selectedMajor) {
+      setFutureScheduleError('Please select a major');
+      return;
+    }
+    
+    try {
+      setLoadingFutureSchedule(true);
+      setFutureScheduleError('');
+      
+      // 이 부분을 수정하여 기존 API를 사용
+      const data = await MajorAPI.getSemesterScheduleByName(
+        selectedMajor,
+        startingSem,
+        startingYear
+      );
+      
+      // 오류 메시지가 포함된 배열인지 확인
+      if (Array.isArray(data) && data.length === 1 && typeof data[0] === 'string' && data[0].includes('Failed to generate')) {
+        throw new Error(data[0]);
+      }
+      
+      // 다양한 응답 형식 처리
+      if (Array.isArray(data)) {
+        setFutureScheduleData(data);
+      } else if (data && typeof data === 'object') {
+        setFutureScheduleData([data]);
+      } else {
+        throw new Error('Invalid response format from server');
+      }
+      
+      setSnackbarMessage(`Future schedule for ${selectedMajor} generated successfully`);
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('Error generating future schedule:', err);
+      setFutureScheduleError(`Failed to generate future schedule: ${err.message}`);
+      setFutureScheduleData([]);
+    } finally {
+      setLoadingFutureSchedule(false);
+    }
+  };
+
   // Handle change for personalized preferences
   const handlePreferenceChange = (field, value) => {
     setPersonalPreferences({
@@ -453,15 +500,15 @@ const Dashboard = () => {
           {errorState.includes('Failed to generate') && (
             <Alert severity="info" sx={{ mt: 2 }}>
               <Typography variant="body2" gutterBottom>
-                <strong>가능한 원인:</strong>
+                <strong>Possible reasons:</strong>
               </Typography>
               <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }}>
-                <li>백엔드 알고리즘에서 일정 생성 중 오류가 발생했습니다</li>
-                <li>선택한 전공에 대한 요구사항 데이터가 불완전할 수 있습니다</li>
-                <li>선택한 시작 학기와 연도에 대한 일정을 생성할 수 없습니다</li>
+                <li>Algorithm error.</li>
+                <li>The data on the selected major’s requirements may be incomplete.</li>
+                <li>A schedule cannot be generated for the selected start semester and year.</li>
               </ul>
               <Typography variant="body2" sx={{ mt: 1 }}>
-                <strong>추천 해결책:</strong> 다른 전공이나 시작 학기를 선택해보세요.
+                <strong>Recomend Solutions:</strong> Search other major or years.
               </Typography>
             </Alert>
           )}
@@ -640,6 +687,7 @@ const Dashboard = () => {
           <Tab label="GER Schedule" icon={<MenuBookIcon />} iconPosition="start" />
           <Tab label="Personalized Schedule" icon={<AccessTimeIcon />} iconPosition="start" />
           <Tab label="Top Course Recommendations" icon={<StarIcon />} iconPosition="start" />
+          <Tab label="Future Schedule" icon={<AccessTimeIcon />} iconPosition="start" />
         </Tabs>
       </Box>
       
@@ -1421,6 +1469,138 @@ const Dashboard = () => {
             </Paper>
           </Grid>
         </Grid>
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={5}>
+          <Grid container spacing={3}>
+            {/* 메이저 선택 및 시작 학기 설정 폼 */}
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 2, height: '100%' }}>
+                <Typography variant="h6" gutterBottom>
+                  Future Schedule Planning
+                </Typography>
+                
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="future-major-select-label">Major</InputLabel>
+                  <Select
+                    labelId="future-major-select-label"
+                    value={selectedMajor}
+                    label="Major"
+                    onChange={handleMajorChange}
+                  >
+                    <MenuItem value="">
+                      <em>Select a major</em>
+                    </MenuItem>
+                    {majors.map((major) => (
+                      <MenuItem key={major} value={major}>
+                        {major}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="future-semester-select-label">Starting Semester</InputLabel>
+                  <Select
+                    labelId="future-semester-select-label"
+                    value={startingSem}
+                    label="Starting Semester"
+                    onChange={(e) => setStartingSem(e.target.value)}
+                  >
+                    <MenuItem value="Fall">Fall</MenuItem>
+                    <MenuItem value="Spring">Spring</MenuItem>
+                    <MenuItem value="Summer">Summer</MenuItem>
+                  </Select>
+                </FormControl>
+                
+                <FormControl fullWidth margin="normal">
+                  <TextField
+                    label="Starting Year"
+                    value={startingYear}
+                    onChange={(e) => setStartingYear(e.target.value)}
+                    type="number"
+                    variant="outlined"
+                  />
+                </FormControl>
+                
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Already Completed Courses:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                    {completedCourses.map((course) => (
+                      <Chip
+                        key={course}
+                        label={course}
+                        onDelete={() => handleRemoveCompletedCourse(course)}
+                        size="small"
+                        color="primary"
+                      />
+                    ))}
+                    {completedCourses.length === 0 && (
+                      <Typography variant="body2" color="text.secondary">
+                        No courses added yet.
+                      </Typography>
+                    )}
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <TextField
+                      label="Add Completed Course"
+                      size="small"
+                      id="future-course-input"
+                      placeholder="e.g. Math111"
+                      variant="outlined"
+                      sx={{ flexGrow: 1 }}
+                    />
+                    <Button 
+                      variant="outlined" 
+                      onClick={() => {
+                        const input = document.getElementById('future-course-input');
+                        if (input && input.value) {
+                          handleAddCompletedCourse(input.value);
+                          input.value = '';
+                        }
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </Box>
+                </Box>
+                
+                <Box sx={{ mt: 3 }}>
+                  <Button 
+                    variant="contained" 
+                    color="primary" 
+                    onClick={handleGenerateFutureSchedule}
+                    disabled={loadingFutureSchedule}
+                    startIcon={loadingFutureSchedule ? <CircularProgress size={20} /> : <AccessTimeIcon />}
+                    fullWidth
+                  >
+                    {loadingFutureSchedule ? 'Generating...' : 'Generate Future Schedule'}
+                  </Button>
+                </Box>
+              </Paper>
+            </Grid>
+            
+            {/* 일정 표시 */}
+            <Grid item xs={12} md={8}>
+              <Paper sx={{ p: 2, minHeight: 240 }}>
+                <Typography variant="h6" gutterBottom>
+                  Future Course Schedule
+                  {selectedMajor && ` for ${selectedMajor}`}
+                </Typography>
+                
+                {futureScheduleError && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {futureScheduleError}
+                  </Alert>
+                )}
+                
+                {renderScheduleContent(futureScheduleData, loadingFutureSchedule, futureScheduleError)}
+              </Paper>
+            </Grid>
+          </Grid>
       </TabPanel>
 
       <Snackbar
