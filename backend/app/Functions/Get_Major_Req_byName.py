@@ -81,7 +81,7 @@ def get_major_requirements_by_name(major_name, uri="mongodb://localhost:27017/",
     db = client[db_name]
     
     # Access the collection that stores major requirements.
-    major_req_collection = db["Major_Req_test"]
+    major_req_collection = db["Major_Req"]
     doc = major_req_collection.find_one({"major_name": major_name})
     
     if doc:
@@ -208,7 +208,7 @@ def process_elective_item(item, db):
 
 # Example usage:
 if __name__ == "__main__":
-    major_name = "Bachelor of Science in Applied Mathematics and Statistics"
+    major_name = "Bachelor of Science in Mathematics"
     major_req = get_major_requirements_by_name(major_name)
     
     if major_req:

@@ -118,8 +118,8 @@ def test_scrape_atlas(page: Page):
         "campus": []
     } # if adjusted, make sure to adjust the csv output below
     searchword = "" # empty for all courses in selected semester and at selected campus
-    search_semester = "Spring 2025"
-    search_campus = "Atlanta Campus"
+    search_semester = "Fall 2025"
+    search_campus = "Oxford Campus"
 
     """
     Web-scraping Begins
@@ -149,9 +149,6 @@ def test_scrape_atlas(page: Page):
 
     try:
         for i, link in enumerate(course_links[start_index:], start=start_index):
-            
-            if link.inner_text().__contains__("CHN 203"):
-                break
 
             logging.info(f"Trying to click link {i+1}: {link.inner_text()}")
             print(f"Working on {link.inner_text().split("\n")[0]}")
@@ -330,7 +327,7 @@ if __name__ == "__main__":
     from playwright.sync_api import sync_playwright
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         context = browser.new_context()
         page = context.new_page()
 
