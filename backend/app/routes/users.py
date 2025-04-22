@@ -50,7 +50,7 @@ def login(email: str, input_pass: str, db: Session = Depends(database.get_db)):
     return db_user
 """
 
-@router.post("/create user")
+@router.post("/create_user")
 def create_user(email: str, password: str, username: str):
     return generate_User(email, password, username)
 
@@ -58,7 +58,7 @@ def create_user(email: str, password: str, username: str):
 def User_login(account: str, password: str):
     return login(account, password)
 
-@router.post("/create schedule")
+@router.post("/create_schedule")
 def create_schedule(account: str, major_name: str, startingSem: str = "Fall" , startingYear: int = 0):
     # Connect to MongoDB
     client = MongoClient("mongodb://localhost:27017/")
@@ -91,7 +91,7 @@ def create_schedule(account: str, major_name: str, startingSem: str = "Fall" , s
     else:
         return {"Failed to generate a full schedule."}
     
-@router.get("/get current schedule")
+@router.get("/get_current_schedule")
 def get_user_schedule(account: str):
     client = MongoClient("mongodb://localhost:27017/")
     db = client["my_database"]
