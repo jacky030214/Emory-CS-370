@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import schemas, crud, database
 from Functions.Create_User import generate_User, login
-from Functions.Generate_Semester_Schedule_byMajor import generate_full_schedule, convert_schedule_to_obj, add_GER_course
+from Functions.Generate_Semester_Schedule_byMajor import generate_full_schedule, convert_schedule_to_obj, add_GER_course, generate_future_schedule, Generate_Schedule_withTime
 from Models.User_Logins_Model import User_Logins
 from routes.schedules import get_GER_Schedule
 from pymongo import MongoClient
@@ -74,6 +74,7 @@ def create_schedule(account: str, major_name: str, startingSem: str = "Fall" , s
         semester_schedules = convert_schedule_to_obj(full_schedule, startYear=startingYear, startsFall= True if startingSem == "Fall" else False)
         GER_schedule = add_GER_course(semester_schedules, isBulePlan=False, isEM=True)
         outputDict = []
+
         for sem in GER_schedule:
             outputDict.append(sem.to_dict())
         user = collection.find_one({"email": account})
@@ -81,6 +82,7 @@ def create_schedule(account: str, major_name: str, startingSem: str = "Fall" , s
             user = collection.find_one({"username": account})
             if not user:
                 return "User not exist"
+
             collection.update_one({"username": account}, {"$set": {"schedule": outputDict}})
             return {"message": "Schedule updated"}
             
@@ -114,3 +116,55 @@ def get_user_schedule(account: str):
     else: 
         return {"no schedule found for": user['username']}
     
+@router.post("/generate detial schedule")
+def generate_detail_schedule(account: str, major_name: str, startingSem: str = "Fall" , startingYear: int = 0, taken: list[str] = None):
+
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["my_database"]
+    
+    # Access the collection that stores major requirements
+    collection = db["Users"]
+    
+    user = collection.find_one({"email": account})
+    if not user:
+        user = collection.find_one({"username": account})
+        if not user:
+            return "User not exist"
+    collection.update_one({"username": user['username']}, {"$set": {"takenClasses": taken}})
+    if user['takenClasses']:
+        takenClasses = user['takenClasses']
+        for cls in takenClasses:
+            taken.append(cls)
+    id = user['_id']
+    
+    detail_schedule = Generate_Schedule_withTime(takenClasses= taken, major_name=major_name)[0]
+    future_classes = Generate_Schedule_withTime(takenClasses= taken, major_name=major_name)[1]   
+    if detail_schedule:
+        if not user:
+            user = collection.find_one({"username": account})
+            if not user:
+                return "User not exist"
+
+            collection.update_one({"username": account}, {"$set": {
+                "detail_Schedule": detail_schedule,
+                "futureClasses": future_classes,
+                "majorName": major_name
+            }})
+            return {"message": "Schedule updated"}
+            
+        return {"message": "Schedule updated"}
+        collection.update_one({"_id": id}, {"$set": {
+            "detail_Schedule": detail_schedule,
+            "futureClasses": future_classes,
+            "majorName": major_name
+        }})
+        return "C"
+        collection.update_one({"_id": id}, {"$set": {'detail_Schedule': detial_schedule}})
+        return detial_schedule
+        collection.update_one({"username": user['username']}, {"$set": {"futureClasses": future_classes}})
+        collection.update_one({"username": user['username']}, {"$set": {"majorName": major_name}})
+
+        
+        return {"message": "Schedule updated"}
+    else:
+        return {"Failed to generate a schedule."}
