@@ -170,8 +170,7 @@ const CourseListPage = () => {
     const fetchCourses = async () => {
       try {
         setLoading(true);
-        // This assumes CourseAPI has a getAll method
-        const data = await CourseAPI.getAll();
+        const data = await CourseAPI.getAllCourses();
         setCourses(data);
         setLoading(false);
       } catch (err) {
@@ -196,7 +195,7 @@ const CourseListPage = () => {
               {course.name} ({course.course_id})
             </Typography>
             <Typography variant="body2">
-              {course.credit_hours} credits | Professor: {course.professor || 'TBA'}
+              {course.credit_hours} credits | Professor: {course.professor_name || course.professor || 'TBA'}
             </Typography>
             <Typography variant="body2" sx={{ mt: 1 }}>
               {course.description || 'No description available'}

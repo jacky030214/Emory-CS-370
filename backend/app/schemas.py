@@ -41,6 +41,7 @@ class CourseResponse(BaseModel):
     requirement_designation: str
     campus: str
     professor_id: int
+    professor: ProfessorResponse | None = None
 
     class Config:
         orm_mode = True
