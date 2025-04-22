@@ -33,6 +33,7 @@ import {
 import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/Login_Page';
 import SignupPage from './pages/Signup_Page';
+import ScheduleCalendar from './pages/ScheduleCalendar';
 import axios from 'axios';
 
 // API 서비스 import
@@ -165,6 +166,7 @@ const CourseListPage = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -188,6 +190,17 @@ const CourseListPage = () => {
 
   return (
     <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Available Courses</Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => navigate('/schedule')}
+          startIcon={<SchoolIcon />}
+        >
+          View Schedule
+        </Button>
+      </Box>
       {courses.length > 0 ? (
         courses.map((course, index) => (
           <Box key={index} sx={{ mb: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
@@ -237,7 +250,9 @@ const NavMenu = ({ mobileView = false, onClose = null }) => {
   
   const handleNavigation = (path) => {
     navigate(path);
-    if (onClose) onClose();
+    if (mobileView && onClose) {
+      onClose();
+    }
   };
   
   return (
@@ -576,24 +591,14 @@ const App = () => {
               
               <Route path="/schedule" element={
                 <ProtectedRoute>
-                  <Box p={4}>
-                    <Typography variant="h4" gutterBottom>
-                      Semester Schedule
-                    </Typography>
-                    <SchedulePage />
-                  </Box>
+                  <ScheduleCalendar />
                 </ProtectedRoute>
               } />
               
               {/* Future routes would be added here */}
               <Route path="/courses" element={
                 <ProtectedRoute>
-                  <Box p={4}>
-                    <Typography variant="h4" gutterBottom>
-                      Available Courses
-                    </Typography>
-                    <CourseListPage />
-                  </Box>
+                  <CourseListPage />
                 </ProtectedRoute>
               } />
               <Route path="/profile" element={
