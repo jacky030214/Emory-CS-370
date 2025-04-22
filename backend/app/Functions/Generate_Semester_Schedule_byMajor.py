@@ -435,8 +435,9 @@ def add_GER_course(schedule, isBulePlan = False, isEM = True, takenClass = None)
                 allclasses_obj.append(cls)
         if takenClass == None:
             takenClass = []
-        for cls in takenClass:
-            allclasses_id.append(cls)
+        else:
+            for cls in takenClass:
+                allclasses_id.append(cls)
         for cls in allclasses_obj:
             if  "First Year Seminar with Race Ethnicity" in cls.requirement_designation:
                 area1 = area1-1

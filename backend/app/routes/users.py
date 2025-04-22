@@ -130,41 +130,37 @@ def generate_detail_schedule(account: str, major_name: str, startingSem: str = "
         user = collection.find_one({"username": account})
         if not user:
             return "User not exist"
-    collection.update_one({"username": user['username']}, {"$set": {"takenClasses": taken}})
     if user['takenClasses']:
         takenClasses = user['takenClasses']
         for cls in takenClasses:
             taken.append(cls)
     id = user['_id']
-    
+
     detail_schedule = Generate_Schedule_withTime(takenClasses= taken, major_name=major_name)[0]
     future_classes = Generate_Schedule_withTime(takenClasses= taken, major_name=major_name)[1]   
     if detail_schedule:
-        if not user:
-            user = collection.find_one({"username": account})
-            if not user:
-                return "User not exist"
+        # if not user:
+        #     user = collection.find_one({"username": account})
+        #     if not user:
+        #         return "User not exist"
 
-            collection.update_one({"username": account}, {"$set": {
-                "detail_Schedule": detail_schedule,
-                "futureClasses": future_classes,
-                "majorName": major_name
-            }})
-            return {"message": "Schedule updated"}
+        #     collection.update_one({"username": account}, {"$set": {
+        #         "detail_Schedule": detail_schedule,
+        #         "futureClasses": future_classes,
+        #         "majorName": major_name
+        #     }})
+        #     return {"message": "Schedule updated"}
             
-        return {"message": "Schedule updated"}
+        # return {"message": "Schedule updated"}.
+
+        detail_schedule = detail_schedule.to_dict()
         collection.update_one({"_id": id}, {"$set": {
             "detail_Schedule": detail_schedule,
             "futureClasses": future_classes,
-            "majorName": major_name
-        }})
-        return "C"
-        collection.update_one({"_id": id}, {"$set": {'detail_Schedule': detial_schedule}})
-        return detial_schedule
-        collection.update_one({"username": user['username']}, {"$set": {"futureClasses": future_classes}})
-        collection.update_one({"username": user['username']}, {"$set": {"majorName": major_name}})
-
-        
+            "majorName": major_name,
+            "takenClasses": taken
+        }})  
         return {"message": "Schedule updated"}
     else:
         return {"Failed to generate a schedule."}
+    
