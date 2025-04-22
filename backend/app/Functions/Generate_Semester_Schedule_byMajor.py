@@ -433,8 +433,11 @@ def add_GER_course(schedule, isBulePlan = False, isEM = True, takenClass = None)
             for cls in sem.classes:
                 allclasses_id.append(cls.class_id)
                 allclasses_obj.append(cls)
-        for cls in takenClass:
-            allclasses_id.append(cls)
+        if takenClass == None:
+            takenClass = []
+        else:
+            for cls in takenClass:
+                allclasses_id.append(cls)
         for cls in allclasses_obj:
             if  "First Year Seminar with Race Ethnicity" in cls.requirement_designation:
                 area1 = area1-1
@@ -700,7 +703,8 @@ def Generate_Schedule_withTime(takenClasses, major_name):
     if not major_req:
         print(f"Major requirements not found for {major_name}")
         return None
-
+    if takenClasses == None:
+        takenClasses = []
     # Build list of required class objects.
     required_classes_id = []
     required_classes = []
@@ -1012,9 +1016,13 @@ def generate_future_schedule(major_name, num_semesters, takenClasses = None, fut
     if not major_req:
         print(f"Major requirements not found for {major_name}")
         return None
-
+    if takenClasses == None:
+        takenClasses = []
+    if futureClasses == None:
+        futureClasses = []
     # Build list of required class objects.
     required_classes_id = []
+    required_classes_id += futureClasses
     required_classes = []
     for class_item in major_req.required_classes:
         # If alternatives are provided, choose the first alternative.
@@ -1025,7 +1033,7 @@ def generate_future_schedule(major_name, num_semesters, takenClasses = None, fut
 
         class_obj = get_class_by_id(class_id, uri, db_name)
         if class_obj:
-            if class_obj.class_id in takenClasses:
+            if class_obj.class_id in (takenClasses or futureClasses):
                 continue
             required_classes.append(class_obj)
             required_classes_id.append(class_id)
@@ -1048,7 +1056,7 @@ def generate_future_schedule(major_name, num_semesters, takenClasses = None, fut
                             if elective_id not in required_classes_id:
                                 if elective_id == 'MATH275' or elective_id == 'MATH276':
                                     continue
-                                if elective_id in takenClasses:
+                                if elective_id in (takenClasses or futureClasses):
                                     break
                                 elective_classes_id.append(elective_id)
                                 break
@@ -1258,7 +1266,7 @@ def generate_future_schedule(major_name, num_semesters, takenClasses = None, fut
 # Example usage:
 if __name__ == "__main__":
     # Generate_Schedule_withTime(["QTM110","MATH111","MATH112","QTM150","QTM151"], "Bachelor of Science in Applied Mathematics and Statistics")
-    generate_future_schedule(major_name="Bachelor of Science in Applied Mathematics and Statistics", num_semesters=7, takenClasses=["QTM110","MATH111","MATH112","QTM150","QTM151"])
+    Generate_Schedule_withTime(major_name="Bachelor of Science in Applied Mathematics and Statistics", takenClasses=None)
     """
     major_input = "Bachelor of Science in Applied Mathematics and Statistics"
     full_schedule = generate_full_schedule(major_input, num_semesters=8, min_credits=0, max_credits=18)

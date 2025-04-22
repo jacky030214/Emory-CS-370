@@ -1,5 +1,5 @@
 class User_Logins:
-    def __init__(self, email, password, username, schedule):
+    def __init__(self, email, password, username, schedule, takenClasses = None, detail_Schedule = None, futureClasses = None, majorName = None):
         """
         Initialize a User_Logins object.
 
@@ -11,6 +11,10 @@ class User_Logins:
         self.password = password
         self.username = username
         self.schedule = schedule
+        self.takenClasses = takenClasses
+        self.detail_Schedule = detail_Schedule
+        self.futureClasses = futureClasses
+        self.majorName = majorName
 
     def to_dict(self):
         """
@@ -20,7 +24,11 @@ class User_Logins:
             "email": self.email,
             "password": self.password,
             "username": self.username,
-            "schedule": self.schedule
+            "schedule": self.schedule,
+            "takenClasses": self.takenClasses,
+            "detail_Schedule": self.detail_Schedule,
+            "futureClasses": self.futureClasses,
+            "majorName": self.majorName
         }
 
     @staticmethod
@@ -32,7 +40,11 @@ class User_Logins:
             email=data.get("email"),
             password=data.get("password"),
             username=data.get("username"),
-            schedule=data.get("schedule")
+            schedule=data.get("schedule"),
+            takenClasses=data.get("takenClasses"),
+            detail_Schedule=data.get("detail_Schedule"),
+            futureClasses=data.get("futureClasses"),
+            majorName=data.get("majorName")
         )
 
     def __repr__(self):

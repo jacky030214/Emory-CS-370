@@ -208,7 +208,7 @@ def process_elective_item(item, db):
 
 # Example usage:
 if __name__ == "__main__":
-    major_name = "Bachelor of Science in Mathematics"
+    major_name = "Bachelor of Science in Applied Mathematics and Statistics"
     major_req = get_major_requirements_by_name(major_name)
     
     if major_req:

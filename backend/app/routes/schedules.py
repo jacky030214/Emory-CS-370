@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import schemas, crud, database
-from Functions.Generate_Semester_Schedule_byMajor import generate_full_schedule, convert_schedule_to_obj, add_GER_course
+from Functions.Generate_Semester_Schedule_byMajor import generate_full_schedule, convert_schedule_to_obj, add_GER_course, generate_future_schedule, Generate_Schedule_withTime
 
 router = APIRouter()
 
@@ -35,4 +35,22 @@ def get_GER_Schedule(major_name: str, startingSem: str = "Fall" , startingYear: 
             outputDict.append(sem.to_dict())
         return outputDict
     else:
-        return {"Failed to generate a full schedule."}
+        return {"Failed to generate a full schedule."} 
+    
+@router.get("/get_detail_semester_schedule")
+def get_Detail_Schedule(major_name: str, startingSem: str = "Fall" , startingYear: int = 0, taken: str = None):
+
+    detial_schedule = Generate_Schedule_withTime(takenClasses= taken, major_name=major_name)[0]
+    future_classes = Generate_Schedule_withTime(takenClasses= taken, major_name=major_name)[1]
+    if detial_schedule:
+        return detial_schedule
+    else:
+        return {"Failed to generate a schedule."}
+    
+@router.get("/generate_future_schedule")
+def generate_Future_schedule(major_name: str, startingSem: str = "Fall" , startingYear: int = 0, taken: str = None):
+    future_schedule = generate_future_schedule(major_name=major_name, num_semesters=7, takenClasses=taken)
+    if future_schedule:
+        return future_schedule
+    else:
+        return {"Failed to generate a schedule."}
