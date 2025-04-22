@@ -78,6 +78,22 @@ export const CourseAPI = {
       console.error('Error generating personalized schedule:', error);
       throw error;
     }
+  },
+  // CourseAPI 객체 내부에 추가
+  getTopCourses: async (allSchedules, preferences, k = 5, undergraduateOnly = true, collectionName = 'all_courses') => {
+    try {
+      const response = await api.post('/get_top_k', {
+        all_schedules: allSchedules,
+        preferences: preferences,
+        k: k,
+        undergraduate_only: undergraduateOnly,
+        collection_name: collectionName
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error getting top courses:', error);
+      throw error;
+    }
   }
 };
 

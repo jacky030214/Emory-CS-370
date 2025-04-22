@@ -30,6 +30,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import SchoolIcon from '@mui/icons-material/School';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import StarIcon from '@mui/icons-material/Star';
 
 // Import the API services
 import { CourseAPI, MajorAPI, UserAPI, ProfessorAPI } from "../services/api";
@@ -62,6 +63,16 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [classId, setClassId] = useState('');
   const [classDetails, setClassDetails] = useState(null);
+  const [topCoursesSchedule, setTopCoursesSchedule] = useState([]);
+  const [topCoursesPreferences, setTopCoursesPreferences] = useState({
+    rmp_rating: "high",
+    ger: [],
+    taken: [],
+    campus: "Emory",
+    semester: "fall",
+    description: "",
+    times: []
+  });
   
   // Major schedule states
   const [selectedMajor, setSelectedMajor] = useState('Bachelor of Arts in Mathematics');
@@ -70,6 +81,13 @@ const Dashboard = () => {
   const [scheduleData, setScheduleData] = useState([]);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
   const [scheduleError, setScheduleError] = useState('');
+
+  const [busyTimes, setBusyTimes] = useState([]);
+  const [busyTimeInput, setBusyTimeInput] = useState('');
+  const [loadingTopCourses, setLoadingTopCourses] = useState(false);
+  const [topCoursesError, setTopCoursesError] = useState('');
+  const [topCoursesResults, setTopCoursesResults] = useState([]);
+  const [numberOfResults, setNumberOfResults] = useState(5);
   
   // GER schedule states
   const [gerScheduleData, setGerScheduleData] = useState([]);
@@ -276,6 +294,110 @@ const Dashboard = () => {
       setPersonalizedSchedule([]);
     } finally {
       setLoadingPersonalized(false);
+    }
+  };
+
+    // Top Courses preference 변경 핸들러
+  const handleTopCoursesPreferenceChange = (field, value) => {
+    setTopCoursesPreferences({
+      ...topCoursesPreferences,
+      [field]: value
+    });
+  };
+
+  // 바쁜 시간 추가 핸들러
+  const handleAddBusyTime = () => {
+    if (busyTimeInput && !busyTimes.includes(busyTimeInput)) {
+      const newBusyTimes = [...busyTimes, busyTimeInput];
+      setBusyTimes(newBusyTimes);
+      setTopCoursesPreferences({
+        ...topCoursesPreferences,
+        times: newBusyTimes
+      });
+      setBusyTimeInput('');
+    }
+  };
+
+  // 바쁜 시간 제거 핸들러
+  const handleRemoveBusyTime = (time) => {
+    const newBusyTimes = busyTimes.filter(t => t !== time);
+    setBusyTimes(newBusyTimes);
+    setTopCoursesPreferences({
+      ...topCoursesPreferences,
+      times: newBusyTimes
+    });
+  };
+
+  // GER 선택 핸들러 (multiple selection)
+  const handleTopCoursesGerChange = (event) => {
+    const {
+      target: { value },
+    } = event;
+    
+    // On autofill we get a stringified value
+    const gerValues = typeof value === 'string' ? value.split(',') : value;
+    
+    handleTopCoursesPreferenceChange('ger', gerValues);
+  };
+
+  // 이수한 과목 추가 핸들러
+  const handleAddTakenCourse = (courseId) => {
+    if (courseId && !topCoursesPreferences.taken.includes(courseId)) {
+      const newTaken = [...topCoursesPreferences.taken, courseId];
+      handleTopCoursesPreferenceChange('taken', newTaken);
+    }
+  };
+
+  // 이수한 과목 제거 핸들러
+  const handleRemoveTakenCourse = (courseId) => {
+    const newTaken = topCoursesPreferences.taken.filter(id => id !== courseId);
+    handleTopCoursesPreferenceChange('taken', newTaken);
+  };
+
+  // 코스 추천 생성 핸들러
+  const handleGetTopCourses = async () => {
+    try {
+      setLoadingTopCourses(true);
+      setTopCoursesError('');
+      
+      // 현재 사용자 스케줄 (기존 스케줄 데이터 또는 커스텀 클래스로 구성)
+      const currentSchedule = [
+        {
+          year: 0,
+          semester: "Fall",
+          classes: customClasses.map(course => ({
+            class_id: course.class_id || course.course_id,
+            class_name: course.class_name || course.course_name,
+            recurring: course.recurring,
+            credit_hours: course.credit_hours || 3,
+            prereqs: course.prereqs || [],
+            requirement_designation: course.requirement_designation || [],
+            campus: course.campus === "Emory" ? "EM" : "OX",
+            class_desc: course.class_desc || course.description,
+            timeslot: course.timeslot || course.time
+          })),
+          total_credit_hours: customClasses.reduce((sum, course) => sum + (course.credit_hours || 3), 0)
+        }
+      ];
+      
+      // API 호출
+      const results = await CourseAPI.getTopCourses(
+        currentSchedule, 
+        topCoursesPreferences,
+        numberOfResults,
+        true,
+        'all_courses'
+      );
+      
+      setTopCoursesResults(results);
+      setSnackbarMessage('Top course recommendations generated successfully');
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('Error getting top courses:', err);
+      setTopCoursesError(`Failed to get top courses: ${err.message}`);
+      setTopCoursesResults([]);
+    } finally {
+      setLoadingTopCourses(false);
     }
   };
 
@@ -517,6 +639,7 @@ const Dashboard = () => {
           <Tab label="Major Schedule" icon={<SchoolIcon />} iconPosition="start" />
           <Tab label="GER Schedule" icon={<MenuBookIcon />} iconPosition="start" />
           <Tab label="Personalized Schedule" icon={<AccessTimeIcon />} iconPosition="start" />
+          <Tab label="Top Course Recommendations" icon={<StarIcon />} iconPosition="start" />
         </Tabs>
       </Box>
       
@@ -954,6 +1077,344 @@ const Dashboard = () => {
                 <Box sx={{ p: 3, textAlign: 'center' }}>
                   <Typography>
                     Fill out your preferences and click "Generate Personalized Schedule" to get course recommendations.
+                  </Typography>
+                </Box>
+              )}
+            </Paper>
+          </Grid>
+        </Grid>
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={4}>
+        <Grid container spacing={3}>
+          {/* 설정 폼 */}
+          <Grid item xs={12} md={4}>
+            <Paper sx={{ p: 2, height: '100%' }}>
+              <Typography variant="h6" gutterBottom>
+                Course Recommendation Settings
+              </Typography>
+              
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="top-rmp-rating-label">Professor Rating Preference</InputLabel>
+                <Select
+                  labelId="top-rmp-rating-label"
+                  value={topCoursesPreferences.rmp_rating}
+                  label="Professor Rating Preference"
+                  onChange={(e) => handleTopCoursesPreferenceChange('rmp_rating', e.target.value)}
+                >
+                  <MenuItem value="high">High Ratings Preferred</MenuItem>
+                  <MenuItem value="low">Low Ratings Acceptable</MenuItem>
+                  <MenuItem value="">No Preference</MenuItem>
+                </Select>
+              </FormControl>
+              
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="top-ger-label">General Education Requirements</InputLabel>
+                <Select
+                  labelId="top-ger-label"
+                  multiple
+                  value={topCoursesPreferences.ger}
+                  label="General Education Requirements"
+                  onChange={handleTopCoursesGerChange}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => (
+                        <Chip key={value} label={value} size="small" />
+                      ))}
+                    </Box>
+                  )}
+                >
+                  <MenuItem value="First Year Seminar">First Year Seminar</MenuItem>
+                  <MenuItem value="Humanities, Arts, Performance">Humanities, Arts, Performance</MenuItem>
+                  <MenuItem value="Humanities and Arts">Humanities and Arts</MenuItem>
+                  <MenuItem value="Natural Science">Natural Science</MenuItem>
+                  <MenuItem value="Natural Sciences">Natural Sciences</MenuItem>
+                  <MenuItem value="Quantitative Reasoning">Quantitative Reasoning</MenuItem>
+                  <MenuItem value="Mathematics and Quantitative Reasoning">Mathematics and Quantitative Reasoning</MenuItem>
+                  <MenuItem value="Social Science">Social Science</MenuItem>
+                  <MenuItem value="First Year Writing">First Year Writing</MenuItem>
+                  <MenuItem value="Writing">Writing</MenuItem>
+                  <MenuItem value="Continuing Communication">Continuing Communication</MenuItem>
+                  <MenuItem value="Intercultural Communication">Intercultural Communication</MenuItem>
+                  <MenuItem value="Race and Ethnicity">Race and Ethnicity</MenuItem>
+                  <MenuItem value="Experience and Application">Experience and Application</MenuItem>
+                  <MenuItem value="Physical Education">Physical Education</MenuItem>
+                  <MenuItem value="Health">Health</MenuItem>
+                </Select>
+              </FormControl>
+              
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="top-campus-label">Campus</InputLabel>
+                <Select
+                  labelId="top-campus-label"
+                  value={topCoursesPreferences.campus}
+                  label="Campus"
+                  onChange={(e) => handleTopCoursesPreferenceChange('campus', e.target.value)}
+                >
+                  <MenuItem value="Emory">Emory</MenuItem>
+                  <MenuItem value="Oxford">Oxford</MenuItem>
+                  <MenuItem value="">No Preference</MenuItem>
+                </Select>
+              </FormControl>
+              
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="top-semester-label">Semester</InputLabel>
+                <Select
+                  labelId="top-semester-label"
+                  value={topCoursesPreferences.semester}
+                  label="Semester"
+                  onChange={(e) => handleTopCoursesPreferenceChange('semester', e.target.value)}
+                >
+                  <MenuItem value="fall">Fall</MenuItem>
+                  <MenuItem value="spring">Spring</MenuItem>
+                  <MenuItem value="summer">Summer</MenuItem>
+                  <MenuItem value="fall/spring">Fall/Spring</MenuItem>
+                </Select>
+              </FormControl>
+              
+              <FormControl fullWidth margin="normal">
+                <TextField
+                  label="Course Description Preferences"
+                  multiline
+                  rows={3}
+                  value={topCoursesPreferences.description}
+                  onChange={(e) => handleTopCoursesPreferenceChange('description', e.target.value)}
+                  placeholder="Describe what topics or content you're interested in learning..."
+                  variant="outlined"
+                />
+              </FormControl>
+              
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Time Conflicts (When you're busy):
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                  {busyTimes.map((time) => (
+                    <Chip
+                      key={time}
+                      label={time}
+                      onDelete={() => handleRemoveBusyTime(time)}
+                      size="small"
+                      color="error"
+                    />
+                  ))}
+                  {busyTimes.length === 0 && (
+                    <Typography variant="body2" color="text.secondary">
+                      No busy times added yet.
+                    </Typography>
+                  )}
+                </Box>
+                
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <TextField
+                    label="Add Busy Time"
+                    size="small"
+                    value={busyTimeInput}
+                    onChange={(e) => setBusyTimeInput(e.target.value)}
+                    placeholder="e.g. MWF 9:00am-9:50am"
+                    variant="outlined"
+                    sx={{ flexGrow: 1 }}
+                    helperText="Format: MWF 9:00am-10:50am"
+                  />
+                  <Button 
+                    variant="outlined" 
+                    onClick={handleAddBusyTime}
+                  >
+                    Add
+                  </Button>
+                </Box>
+              </Box>
+              
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Completed Courses:
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                  {topCoursesPreferences.taken.map((course) => (
+                    <Chip
+                      key={course}
+                      label={course}
+                      onDelete={() => handleRemoveTakenCourse(course)}
+                      size="small"
+                      color="primary"
+                    />
+                  ))}
+                  {topCoursesPreferences.taken.length === 0 && (
+                    <Typography variant="body2" color="text.secondary">
+                      No courses added yet.
+                    </Typography>
+                  )}
+                </Box>
+                
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <TextField
+                    label="Add Course"
+                    size="small"
+                    id="taken-course-input"
+                    placeholder="e.g. CS170"
+                    variant="outlined"
+                    sx={{ flexGrow: 1 }}
+                  />
+                  <Button 
+                    variant="outlined" 
+                    onClick={() => {
+                      const input = document.getElementById('taken-course-input');
+                      if (input && input.value) {
+                        handleAddTakenCourse(input.value);
+                        input.value = '';
+                      }
+                    }}
+                  >
+                    Add
+                  </Button>
+                </Box>
+              </Box>
+              
+              <Box sx={{ mt: 2 }}>
+                <FormControl fullWidth margin="normal">
+                  <TextField
+                    label="Number of Results"
+                    type="number"
+                    InputProps={{ inputProps: { min: 1, max: 20 } }}
+                    value={numberOfResults}
+                    onChange={(e) => setNumberOfResults(parseInt(e.target.value) || 5)}
+                    variant="outlined"
+                  />
+                </FormControl>
+              </Box>
+              
+              <Box sx={{ mt: 3 }}>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  onClick={handleGetTopCourses}
+                  disabled={loadingTopCourses}
+                  startIcon={loadingTopCourses ? <CircularProgress size={20} /> : <StarIcon />}
+                  fullWidth
+                >
+                  {loadingTopCourses ? 'Finding Courses...' : 'Find Top Courses'}
+                </Button>
+              </Box>
+            </Paper>
+          </Grid>
+          
+          {/* 결과 표시 */}
+          <Grid item xs={12} md={8}>
+            <Paper sx={{ p: 2, minHeight: 240 }}>
+              <Typography variant="h6" gutterBottom>
+                Top Course Recommendations
+              </Typography>
+              
+              {topCoursesError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {topCoursesError}
+                </Alert>
+              )}
+              
+              {loadingTopCourses ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                  <CircularProgress />
+                </Box>
+              ) : topCoursesResults.length > 0 ? (
+                <Box>
+                  <Typography variant="subtitle1" color="primary" gutterBottom>
+                    Top {topCoursesResults.length} Recommended Courses Based on Your Preferences:
+                  </Typography>
+                  
+                  {topCoursesResults.map((result, index) => (
+                    <Card key={index} variant="outlined" sx={{ mb: 2 }}>
+                      <CardContent>
+                        <Typography variant="h6">
+                          {result.course?.course_name || 'Unknown Course'} ({result.course?.course_id || 'No ID'})
+                        </Typography>
+                        
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          <strong>Suitability Score:</strong> {result.suitability_score ? 
+                            `${(result.suitability_score * 100).toFixed(1)}%` : 'N/A'}
+                        </Typography>
+                        
+                        <Typography variant="body2" paragraph>
+                          {result.course?.description || 'No description available.'}
+                        </Typography>
+                        
+                        <Divider sx={{ my: 1 }} />
+                        
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body2">
+                              <strong>Professor:</strong> {result.course?.professor?.name || 'TBA'} 
+                              {result.course?.professor?.rmp_rating ? ` (Rating: ${result.course.professor.rmp_rating}/5)` : ''}
+                            </Typography>
+                            <Typography variant="body2">
+                              <strong>Campus:</strong> {result.course?.campus || 'Unknown'}
+                            </Typography>
+                            <Typography variant="body2">
+                              <strong>Offered:</strong> {result.course?.recurring || 'Unknown'}
+                            </Typography>
+                          </Grid>
+                          
+                          <Grid item xs={12} sm={6}>
+                            {result.course?.requirement_designation && (
+                              <>
+                                <Typography variant="body2">
+                                  <strong>Requirements:</strong>
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                                  {result.course.requirement_designation.map((req, reqIdx) => (
+                                    <Chip 
+                                      key={reqIdx}
+                                      label={req} 
+                                      size="small" 
+                                      color="secondary" 
+                                      variant="outlined"
+                                    />
+                                  ))}
+                                </Box>
+                              </>
+                            )}
+                            
+                            {result.time_conflict === 1 && (
+                              <Alert severity="warning" sx={{ mt: 1 }} variant="outlined">
+                                Time conflict with your schedule
+                              </Alert>
+                            )}
+                          </Grid>
+                        </Grid>
+                      </CardContent>
+                      <CardActions>
+                        <Button 
+                          size="small" 
+                          color="primary"
+                          startIcon={<AddCircleIcon />}
+                          onClick={() => {
+                            // Add course to custom classes for other schedule tabs
+                            const courseObj = {
+                              class_id: result.course?.course_id,
+                              class_name: result.course?.course_name,
+                              recurring: result.course?.recurring,
+                              credit_hours: 3,
+                              prereqs: result.course?.prereqs || [],
+                              requirement_designation: result.course?.requirement_designation || [],
+                              campus: result.course?.campus,
+                              class_desc: result.course?.description,
+                              professor: result.course?.professor?.name || 'TBA',
+                              timeslot: result.course?.time
+                            };
+                            setCustomClasses([...customClasses, courseObj]);
+                            setSnackbarMessage(`${result.course?.course_id || 'Course'} added to your schedule`);
+                            setSnackbarOpen(true);
+                          }}
+                        >
+                          Add to Schedule
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  ))}
+                </Box>
+              ) : (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography>
+                    Fill out your preferences and click "Find Top Courses" to get course recommendations.
                   </Typography>
                 </Box>
               )}
