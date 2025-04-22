@@ -26,7 +26,9 @@ import {
   School as SchoolIcon,
   Person as PersonIcon,
   Logout as LogoutIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Brightness4 as DarkModeIcon,
+  Brightness7 as LightModeIcon
 } from '@mui/icons-material';
 
 // Import pages
@@ -332,7 +334,7 @@ const App = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
-  const open = Boolean(anchorEl);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   
   // Check if user is logged in on app load
   useEffect(() => {
@@ -371,6 +373,11 @@ const App = () => {
     window.location.href = '/login'; // Simple approach for logout
   };
   
+  // Handle theme toggle
+  const handleThemeToggle = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+  
   // Drawer width
   const drawerWidth = 240;
   
@@ -395,6 +402,54 @@ const App = () => {
       <NavMenu mobileView={true} onClose={handleDrawerToggle} />
     </Box>
   );
+
+  const theme = createTheme({
+    palette: {
+      mode: isDarkMode ? 'dark' : 'light',
+      primary: {
+        main: '#ff6b00',
+      },
+      secondary: {
+        main: '#03a9f4',
+      },
+      background: {
+        default: isDarkMode ? '#1a1a2e' : '#f5f5f5',
+        paper: isDarkMode ? '#1a1a2e' : '#ffffff',
+      },
+    },
+    typography: {
+      fontFamily: "'Roboto', 'Helvetica', 'Arial', sans-serif",
+      h4: {
+        fontWeight: 600,
+      },
+      h6: {
+        fontWeight: 500,
+      },
+    },
+    components: {
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+          },
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+          },
+        },
+      },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+          },
+        },
+      },
+    },
+  });
 
   return (
     <ThemeProvider theme={theme}>
@@ -460,13 +515,17 @@ const App = () => {
                     </Button>
                   </Box>
                   
+                  <IconButton color="inherit" onClick={handleThemeToggle}>
+                    {isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
+                  </IconButton>
+                  
                   <IconButton
                     onClick={handleProfileMenuOpen}
                     size="small"
                     sx={{ ml: 2 }}
-                    aria-controls={open ? 'account-menu' : undefined}
+                    aria-controls={anchorEl ? 'account-menu' : undefined}
                     aria-haspopup="true"
-                    aria-expanded={open ? 'true' : undefined}
+                    aria-expanded={anchorEl ? 'true' : undefined}
                   >
                     <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
                       {user.username ? user.username[0].toUpperCase() : user.email ? user.email[0].toUpperCase() : 'U'}
@@ -476,7 +535,7 @@ const App = () => {
                   <Menu
                     anchorEl={anchorEl}
                     id="account-menu"
-                    open={open}
+                    open={Boolean(anchorEl)}
                     onClose={handleProfileMenuClose}
                     onClick={handleProfileMenuClose}
                     PaperProps={{
