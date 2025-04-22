@@ -14,6 +14,8 @@ from tqdm import tqdm
 import os, sys
 # Go up 3 levels from this file to get to the project root
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from backend.app.Models.Class_Detail_Model import Class_Detail
 from backend.app.Models.Class_Model import Class_Model
 from backend.app.Models.Semester_Schedule_Model import Semester_Schedule
@@ -26,7 +28,7 @@ from torch.mps import is_available as mps_available
 device = "cuda" if cuda_available() else "cpu"
 device = "mps" if device == "cpu" and mps_available() else device
 model = SentenceTransformer('all-MiniLM-L6-v2').to(device)
-print("Model loaded.")
+print("Model loaded on:", device)
 
 all_requirements = ["First Year Seminar", "Humanities, Arts, Performance", "Humanities and Arts", "Natural Science", "Natural Sciences", "Quantitative Reasoning", "Mathematics and Quantitative Reasoning", "Social Science", "First Year Seminar", "First Year Writing", "Writing", "Continuing Communication", "Intercultural Communication", "Race and Ethnicity", "Experience and Application", "Physical Education", "Health"]
 
@@ -85,9 +87,9 @@ def parse_course_time(course_time: str) -> tuple[list[str], str, str]:
 
 class Course:
     def __init__(self, course_id: str, section: int, crn: int, course_name: str, recurring: str, prereqs: list[str], requirement_designation: list[str], campus: str, description: str, professor: 'Professor', time: str = None, desc_vector=None):
-        assert recurring in ["fall", "spring", "summer", "fall/spring", None], "recurring must be 'fall', 'spring', 'summer', 'fall/spring', or None"
-        for req in requirement_designation:
-            assert req in all_requirements, f"requirement_designation array value: {req} must be one of the following: {all_requirements}"
+        assert recurring in ["fall", "spring", "summer", "fall/spring", "fall/spring/summer", None], f"recurring must be 'fall', 'spring', 'summer', 'fall/spring', 'fall/spring/summer', or None, not {recurring}"
+        # for req in requirement_designation:
+        #     assert req in all_requirements, f"requirement_designation array value: {req} must be one of the following: {all_requirements}"
         assert campus in ["Emory", "Oxford", None], "campus must be 'Emory', 'Oxford', or None"
         self.course_id = course_id
         self.section = section
@@ -133,24 +135,10 @@ class Professor:
         self.email = email
         self.rmp_rating = rmp_rating
 
-class Schedule:
-    def __init__(self, mon: list[Course], tues: list[Course], wed: list[Course], thurs: list[Course], fri: list[Course]):
-        self.mon = mon
-        self.tues = tues
-        self.wed = wed
-        self.thurs = thurs
-        self.fri = fri
-
-class Major:
-    def __init__(self, name: str, requirements: dict[str, list[str]]):
-        self.name = name
-        self.requirements = requirements
-        assert requirements.keys().__contains__("required_courses") and requirements.keys().__contains__("elective1"), "Major must have required_courses and at least a elective1 requirement"
-
 class Preferences:
    def __init__(self, rmp_rating: str | float, ger: list[str], taken: str | list[str], campus: str, semester: str, description: str, times: list[str]):
         if isinstance(rmp_rating, str): assert rmp_rating in ["high", None], "rmp_rating must be 'high' or None"
-        else: assert 0 <= rmp_rating <= 5, "rmp_rating must be a float between 0 and 5"
+        elif isinstance(rmp_rating, float) or isinstance(rmp_rating, int): assert 0 <= rmp_rating <= 5, "rmp_rating must be a float between 0 and 5"
         if not isinstance(taken, list): assert taken in ["high", "low", None], "taken must be 'high', 'low', or None or a list of taken"
         assert campus in ["Emory", "Oxford", None], "campus must be 'Emory', 'Oxford', or None"
         assert semester in ["fall", "spring", "summer", None], "recurring must be 'fall', 'spring', 'summer', or None"
@@ -172,6 +160,14 @@ AmbiguousCourseError = ValueError("Course object must have either (course_id and
 NullCourseError = ValueError("Course object cannot be null.")
 NullPreferenceVectorError = ValueError("Preference vector cannot be null.")
 
+def get_rmp_score(uri: str, db_name: str, collection_name: str, instructor_name: str) -> float:
+    client = MongoClient(uri)
+    db = client[db_name]
+    collection = db[collection_name]
+    result = collection.find_one({"name": instructor_name})
+    return result.get("rating", 0) if result else 0
+
+
 def data_loader(uri: str, db_name: str, collection_name: str) -> list[Course]:
     """
     Loads data from a MongoDB collection into a pandas DataFrame.
@@ -184,39 +180,41 @@ def data_loader(uri: str, db_name: str, collection_name: str) -> list[Course]:
     client = MongoClient(uri)
     db = client[db_name]
     collection = db[collection_name]
-    
+
     courses = list(collection.find())
     course_objs = []
     for course in courses:
         course = dict(course)
         if "requirement_designation" in course.keys():
             course["requirement_designation"] = course["requirement_designation"].split(" with ")
-        if course["campus"] == "EM":
-            course["campus"] = "Emory"
-        elif course["campus"] == "OX":
-            course["campus"] = "Oxford"
-        if "class_desc" in course.keys():
-            if "class_id" in course.keys():
-                course["class_desc"] = course["class_id"] + "\n" + course["class_desc"]
-            if "class_name" in course.keys():
-                course["class_desc"] = course["class_name"] + "\n" + course["class_desc"]
-        if "desc_vector" in course.keys():
-            course["desc_vector"] = Tensor(course["desc_vector"]).to(device)
+        if "campus" in course.keys():
+            if course["campus"] == "EM":
+                course["campus"] = "Emory"
+            elif course["campus"] == "OX":
+                course["campus"] = "Oxford"
+        if "course_description" in course.keys():
+            if "course_code" in course.keys():
+                course["course_description"] = course["course_code"] + "\n" + course["course_description"]
+            if "course_title" in course.keys():
+                course["course_description"] = course["course_title"] + "\n" + course["course_description"]
+        rmp_score = 0
+        if "instructor_name" in course.keys():
+            rmp_score = get_rmp_score(uri, db_name, collection_name, course["instructor_name"])
             
         course_obj = Course(
-            course_id=course.get("class_id", "Failed To Retrieve"),
-            section=course.get("section", 1),
-            crn=course.get("crn", 0000),
-            course_name=course.get("class_name", "Failed To Retrieve"),
-            recurring=course.get("recurring", "fall/spring"),
-            prereqs=course.get("prereqs", []),
+            course_id=course.get("course_code", "Failed To Retrieve"),
+            section=course.get("course_section", 1),
+            crn=course.get("course_crn", 0000),
+            course_name=course.get("course_title", "Failed To Retrieve"),
+            recurring=course.get("semesters_offered", "fall/spring"),
+            prereqs=course.get("prerequisites", []),
             requirement_designation=course.get("requirement_designation", []),
             campus=course.get("campus", "Emory"),
-            description=course.get("class_desc", "Failed To Retrieve"),
+            description=course.get("course_description", "Failed To Retrieve"),
             professor=Professor(
-                name=course.get("professor_name", "Failed To Retrieve"),
-                email=course.get("email", "Failed To Retrieve"),
-                rmp_rating=course.get("rmp_rating", 0)
+                name=course.get("instructor_name", "Failed To Retrieve"),
+                email=course.get("instructor_email", "Failed To Retrieve"),
+                rmp_rating=rmp_score
             ),
             desc_vector=course.get("desc_vector", None),
             time=course.get("time", None)
@@ -272,7 +270,7 @@ def calculate_suitability(course: Course, preferences: Preferences, return_detai
         prereq_score = None
 
     if preferences.campus:
-        campus_score = 1 if course.campus == preferences.campus else 0
+        campus_score = 1 if course.campus == preferences.campus else -10
     else:
         campus_score = None
         
@@ -305,7 +303,7 @@ def calculate_suitability(course: Course, preferences: Preferences, return_detai
         }
     
 
-def incorporate_desc_similarity_scores(score_details: dict, preference_vector: Tensor) -> float:
+def incorporate_desc_similarity_scores(score_details: dict, preference_vector: Tensor) -> dict:
     """
     Calculates a new suitability score by incorporating the description similarity score.
     This function takes the current suitability score and combines it with a 
@@ -324,39 +322,62 @@ def incorporate_desc_similarity_scores(score_details: dict, preference_vector: T
     if not course:
         raise NullCourseError
     if preference_vector is None:
-        raise NullPreferenceVectorError
+        return 0
+    if not hasattr(course, "desc_vector") or not course.desc_vector:
+        score_details["description_score"] = 0
+        score_details["suitability_score"] = score_details["suitability_score"] / 2
+        return score_details
+    if course.description == "undef" or "Failed To Retrieve" in course.description:
+        score_details["description_score"] = 0
+        score_details["suitability_score"] = score_details["suitability_score"] / 2
+        return score_details
+    
+    course.desc_vector = Tensor(course.desc_vector).to(device)
+    preference_vector = preference_vector.to(device)
 
     description_score = util.pytorch_cos_sim(course.desc_vector, preference_vector)
     description_score = float(description_score[0][0]) # extract score from tensor
     curr_score = score_details["suitability_score"]
-    new_suitability_score = (curr_score + description_score) / 2
+    new_suitability_score = (curr_score + description_score*2) / 2
+    score_details["suitability_score"] = new_suitability_score
+    score_details["description_score"] = description_score
+    return score_details
 
-    return new_suitability_score
 
-
-def generate_all_desc_vectors():
+def generate_all_desc_vectors(uri: str, db_name: str, collection_name: str):
     """
     Generates all course description vectors and saves them to the database.
     """
-    # connect to our database
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["my_database"]
-    collection = db["Class"]
+    # connect to the database
+    client = MongoClient(uri)
+    db = client[db_name]
+    collection = db[collection_name]
 
     # load all courses from the database
     courses = list(collection.find())
+
+    # check if desc_vector already exists for 10 random courses
+    random_courses = random.sample(courses, min(10, len(courses)))
+    counter = 0
+    for course in random_courses:
+        if "desc_vector" in course.keys() and "course_description" in course.keys() and course["desc_vector"] is not None:
+            counter += 1
+        elif "course_description" not in course.keys():
+            counter += 1
+        if counter == 10:
+            return
 
     # generate description vectors for each course
     for course in tqdm(courses, desc="Generating description vectors..."):
         course = dict(course)
         # add course_id and class_name to class_desc
-        if "class_desc" in course.keys():
-            if "class_id" in course.keys():
-                course["class_desc"] = course["class_id"] + "\n" + course["class_desc"]
-            if "class_name" in course.keys():
-                course["class_desc"] = course["class_name"] + "\n" + course["class_desc"]
+        if "course_description" in course.keys():
+            if "course_code" in course.keys():
+                course["course_description"] = course["course_code"] + "\n" + course["course_description"]
+            if "course_title" in course.keys():
+                course["course_description"] = course["course_title"] + "\n" + course["course_description"]
             # generate and save the description vector
-            desc_vector = model.encode(course["class_desc"], convert_to_tensor=True)
+            desc_vector = model.encode(course["course_description"], convert_to_tensor=True)
             collection.update_one({"_id": course["_id"]}, {"$set": {"desc_vector": desc_vector.tolist()}})
 
 
@@ -377,20 +398,46 @@ def check_time_conflict(course: Course, preferences: Preferences) -> bool:
     return False
 
 def convert_to_Course_obj(course: Class_Detail | Class_Model) -> Course:
-    course_id = course.class_id
-    course_name = course.class_name
-    recurring = course.recurring
-    credit_hours = course.credit_hours
-    prereqs = course.prereqs
-    requirement_designation = course.requirement_designation
-    campus = "Oxford" if course.campus == "OX" else "Emory" if course.campus == "EM" else None
-    description = course.class_desc
+    if isinstance(course, Class_Model) and hasattr(course, "class_id"):
+        course_id = course.class_id
+        course_name = course.class_name
+        recurring = course.recurring
+        prereqs = course.prereqs if course.prereqs else []
+        requirement_designation = course.requirement_designation if course.requirement_designation else []
+        campus = course.campus
+        description = course.class_desc
+        time = course.timeslot
 
-    # Use defaults for missing fields if Class_Model (i.e., base class)
-    section = getattr(course, "section", 0)
-    crn = getattr(course, "class_num", 0)
-    professor = getattr(course, "professor", None)
-    time = getattr(course, "time_slot", None)
+        return Course(
+            course_id=course_id,
+            section=None,
+            crn=None,
+            course_name=course_name,
+            recurring=recurring,
+            prereqs=prereqs,
+            requirement_designation=requirement_designation,
+            campus= "Emory" if campus == "EM" else "Oxford",
+            description=description,
+            professor=None,
+            time=time,
+            desc_vector=model.encode(description, convert_to_tensor=True) if description else None
+        )
+    if isinstance(course, Class_Detail) and hasattr(course, "course_code"):
+        course_id = course.course_code
+        section = course.course_section
+        crn = course.course_crn
+        course_name = course.course_title
+        recurring = course.semesters_offered
+        prereqs = course.prerequisites if course.prerequisites else []
+        requirement_designation = course.requirement_designation if course.requirement_designation else []
+        campus = course.campus
+        description = course.course_description
+        professor = Professor(
+            name=course.instructor_name,
+            email=course.instructor_email,
+            rmp_rating=0
+        )
+        time = course.meeting_time
 
     return Course(
         course_id=course_id,
@@ -400,19 +447,67 @@ def convert_to_Course_obj(course: Class_Detail | Class_Model) -> Course:
         recurring=recurring,
         prereqs=prereqs,
         requirement_designation=requirement_designation,
-        campus=campus,
+        campus= "Emory" if campus == "EM" else "Oxford",
         description=description,
         professor=professor,
-        time=time
+        time=time,
+        desc_vector=model.encode(description, convert_to_tensor=True) if description else None
     )
 
+def list_to_Course(data: dict) -> Course:
+    if "campus" in data.keys():
+        if data["campus"] == "EM":
+            data["campus"] = "Emory"
+        elif data["campus"] == "OX":
+            data["campus"] = "Oxford"
+    if "requirement_designation" in data.keys():
+        if isinstance(data["requirement_designation"], str):
+            data["requirement_designation"] = [data["requirement_designation"]]
+    return Course (
+        course_id = data.get("course_id", "undef"),
+        section = data.get("section", 0),
+        crn = data.get("crn", 0),
+        course_name = data.get("course_name", "undef"),
+        recurring = data.get("recurring", "undef"),
+        prereqs = data.get("prereqs", []),
+        requirement_designation = data.get("requirement_designation", []),
+        campus = data.get("campus", "undef"),
+        description = data.get("description", "undef"),
+        professor = Professor(
+            name=data.get("professor", {}).get("name", "undef"),
+            email=data.get("professor", {}).get("email", "undef"),
+            rmp_rating=data.get("professor", {}).get("rmp_rating", 0)
+        ),
+        time = data.get("time", "MWTThF 12:00am-1:00am"),
+    )
 
-def get_top_k_courses(all_schedules: list[Semester_Schedule], preferences: Preferences, k: int = 5) -> list[dict]:
+def list_to_Preferences(data: dict) -> Preferences:
+    rmp_rating = data.get("rmp_rating", None)
+    ger = data.get("ger", [])
+    taken = data.get("taken", [])
+    campus = data.get("campus", None)
+    semester = data.get("semester", None)
+    description = data.get("description", None)
+    times = data.get("times", None)
+
+    return Preferences(
+        rmp_rating=rmp_rating,
+        ger=ger,
+        taken=taken,
+        campus=campus,
+        semester=semester,
+        description=description,
+        times=times
+    )
+
+def get_top_k_courses(all_schedules: list[dict], preferences: dict, k: int = 5, undergraduate_only = True, collection_name="all_courses") -> list[dict]:
     taken_courses = []
-    for schedule in all_schedules:
-        for course in schedule.classes:
-            if isinstance(course, Class_Detail) or isinstance(course, Class_Model):
-                taken_courses.append(convert_to_Course_obj(course))
+    for semester in all_schedules:
+        taken_courses.extend(semester.get("classes", []))
+    
+    taken_courses = [list_to_Course(course) for course in taken_courses]
+    preferences = list_to_Preferences(preferences)
+
     if hasattr(preferences, "taken") and isinstance(preferences.taken, list):
         for course in taken_courses:
             preferences.taken.append(course.course_id)
@@ -429,120 +524,64 @@ def get_top_k_courses(all_schedules: list[Semester_Schedule], preferences: Prefe
     
     preference_vector = model.encode(preferences.description, convert_to_tensor=True)
 
-    courses = data_loader(uri="mongodb://localhost:27017/", db_name="my_database", collection_name="Class")
+    print("Loading course data...")
+    all_courses = data_loader(uri="mongodb://localhost:27017/", db_name="my_database", collection_name=collection_name)
+    print("Course data loaded.")
 
     # Calculate suitability scores for all courses
-    courses_and_scores = []
-    for course in courses:
+    score_objs = []
+    for course in all_courses:
         score_obj = calculate_suitability(course=course, preferences=preferences, return_details=True)
-        courses_and_scores.append((course, score_obj))
+        score_objs.append(score_obj)
     
     # Get top 10 courses
-    courses_and_scores.sort(key=lambda x: x[1]["suitability_score"], reverse=True)
-    top_k = courses_and_scores[:k]
+    score_objs.sort(key=lambda x: x["suitability_score"], reverse=True)
+    top_k = score_objs
 
     # Update suitability scores with description similarity scores if needed
     if preference_vector is not None:
-        for i, (course, score_obj) in enumerate(top_k):
-            score_obj["suitability_score"] = incorporate_desc_similarity_scores(score_obj, preference_vector)
-            top_k[i] = (course, score_obj)  # Update the tuple with the modified score_obj
-        top_k.sort(key=lambda x: x[1]["suitability_score"], reverse=True)
+        for i, score_obj in enumerate(top_k):
+            top_k[i] = incorporate_desc_similarity_scores(score_obj, preference_vector)
+        top_k.sort(key=lambda x: x["suitability_score"], reverse=True)
+    # import json
+    # with open("score_objs.json", "w") as json_file:
+    #     json.dump(score_objs, json_file, default=lambda o: o.to_dict() if hasattr(o, "to_dict") else o, indent=4)
 
+    if undergraduate_only:
+        filtered_top_k = []
+        for i, score_obj in enumerate(top_k):
+            for char in score_obj["course"].course_id:
+                if char.isdigit():
+                    break
+            if char.isdigit() and not int(char) >= 5:
+                filtered_top_k.append(score_obj)
+        top_k = filtered_top_k
 
-    return top_k
+    return top_k[:k]
 
 def main():
+    print("gen1")
+    generate_all_desc_vectors(uri="mongodb://localhost:27017/", db_name="my_database", collection_name="all_courses")
+    print("gen2")
+    generate_all_desc_vectors(uri="mongodb://localhost:27017/", db_name="my_database", collection_name="fall_2025")
+    print("gen3")
+    generate_all_desc_vectors(uri="mongodb://localhost:27017/", db_name="my_database", collection_name="spring_2025")
     # FALL 2024
-    fall_classes = [
-        Class_Detail(
-            class_id="MATH101",
-            class_num=1001,
-            class_name="Calculus I",
-            recurring="fall/spring",
-            credit_hours=4,
-            prereqs=[],
-            requirement_designation=["Writing"],
-            campus="EM",
-            class_desc="Intro to derivatives and integrals.",
-            section=1,
-            professor=Professor("Dr. Newton", "newt@emory.edu", 4),
-            time_slot="MW 1pm-2:15pm",
-            days=["Mon", "Wed"],
-            class_size=30,
-            offering="inperson",
-            room="MSC 101"
-        ),
-        Class_Model(  # Base class with fewer details
-            class_id="ENG101",
-            class_name="English Composition",
-            recurring="fall/spring",
-            credit_hours=3,
-            prereqs=[],
-            requirement_designation=["Writing"],
-            campus="OX",
-            class_desc="Develops skills in argumentative writing."
-        )
-    ]
+    all_schedules = [{"year":0,"semester":"Fall","classes":[{"class_id":"Math275","class_name":"Honors Linear Algebra","recurring":"fall","credit_hours":4,"prereqs":"AP Calculus BC","requirement_designation":[],"campus":"EM","class_desc":"This course is the first half of the advanced math introductory sequence. It covers the basics of linear algebra: vector spaces, linear transformations, determinants, and eigenvalues, with an emphasis on mathematical rigor. This class is for freshmen who scored a 5 on the Calculus AP BC exam.","timeslot":None},{"class_id":"Math111","class_name":"Calculus I","recurring":"fall/spring","credit_hours":3,"prereqs":[],"requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Limits, continuity, derivatives, antiderivatives, the definite integral.","timeslot":None}],"total_credit_hours":7},{"year":1,"semester":"Spring","classes":[{"class_id":"Math210","class_name":"Advanced Calculus for Data Sciences","recurring":"fall/spring","credit_hours":4,"prereqs":"Math111 or Math115 or Math119","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"This course is a short treatment of?MATH 112?and?211?with a lab component. It is not appropriate for students who have taken?MATH 211. Topics include: advanced integration, Taylor series; and multivariable differentiation, optimization and integration; and applications to statistics and science.","timeslot":None},{"class_id":"Math112","class_name":"Calculus II","recurring":"fall/spring","credit_hours":3,"prereqs":"Math111 or Math115 or Math119","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Techniques of integration, exponential and logarithm functions, sequences and series, polar coordinates.","timeslot":None}],"total_credit_hours":7},{"year":1,"semester":"Fall","classes":[{"class_id":"Math211","class_name":"Advanced Calculus (Multivariable)","recurring":"fall/spring","credit_hours":3,"prereqs":"Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Vectors; multivariable functions; partial derivatives; multiple integrals; vector and scalar fields; Green's and Stokes' theorems; divergence theorem.","timeslot":None},{"class_id":"Math212","class_name":"Differential Equations","recurring":"fall/spring","credit_hours":3,"prereqs":"Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"This is a standard first semester Differential Equations course which covers first and second-order differential equations and systems of differential equations, with an emphasis placed on developing techniques for solving differential equations.","timeslot":None},{"class_id":"Math221","class_name":"Linear Algebra","recurring":"fall/spring","credit_hours":4,"prereqs":"Math111 or Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Systems of linear equations, matrices, determinants, linear transformations, eigenvalues and eigenvectors, least-squares.","timeslot":None},{"class_id":"Math250","class_name":"Foundations of Mathematics","recurring":"fall/spring","credit_hours":3,"prereqs":"Math111; Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"An introduction to theoretical mathematics. Logic and proofs, operations on sets, induction, relations, functions.","timeslot":None}],"total_credit_hours":13},{"year":2,"semester":"Spring","classes":[],"total_credit_hours":0},{"year":2,"semester":"Fall","classes":[],"total_credit_hours":0},{"year":3,"semester":"Spring","classes":[],"total_credit_hours":0},{"year":3,"semester":"Fall","classes":[],"total_credit_hours":0},{"year":4,"semester":"Spring","classes":[],"total_credit_hours":0}]
 
-    # SPRING 2025
-    spring_classes = [
-        Class_Detail(
-            class_id="MATH102",
-            class_num=1002,
-            class_name="Calculus II",
-            recurring="spring",
-            credit_hours=4,
-            prereqs=["MATH101"],
-            requirement_designation=["Writing"],
-            campus="EM",
-            class_desc="Continuation of Calculus I.",
-            section=1,
-            professor=Professor("Dr. Leibniz", "lei@emory.edu", 5),
-            time_slot="TTh 1pm-2:15pm",
-            days=["Tue", "Thu"],
-            class_size=30,
-            offering="inperson",
-            room="MSC 102"
-        ),
-        Class_Detail(
-            class_id="CS170",
-            class_num=1701,
-            class_name="Intro to CS",
-            recurring="spring",
-            credit_hours=3,
-            prereqs=[],
-            requirement_designation=["Writing"],
-            campus="EM",
-            class_desc="Introduction to computer science fundamentals.",
-            section=1,
-            professor=Professor("Dr. Ada", "newt@emory.edu", 4),
-            time_slot="MW 1pm-2:15pm",
-            days=["Mon", "Wed"],
-            class_size=40,
-            offering="inperson",
-            room="CSB 100"
-        )
-    ]
-
-    # Wrap in Semester_Schedule
-    semesters = [
-        Semester_Schedule(year=2024, semester="Fall", classes=fall_classes),
-        Semester_Schedule(year=2025, semester="Spring", classes=spring_classes)
-    ]
-
-    topk = get_top_k_courses(semesters, Preferences(
+    topk = get_top_k_courses(all_schedules, Preferences(
         rmp_rating="high",
-        ger=["Humanities and Arts", "Natural Science"],
+        ger=[],
         taken=["CS170", "CS171"],
         campus="Emory",
         semester="fall",
-        description="I would like to learn about data structures and algorithms.",
-        times = ["TTh 11:30am-12:45pm", "F 1pm-2:15pm", "MW 8:30am-9:45am"]
+        description="I want to learn about data structures and algorithms using Java.",
+        times = ["TTh 1:00pm-2:00pm"]
     ), k=5)
 
-    for course, score_obj in topk:
-        print(course.to_dict())
-        print(score_obj["suitability_score"])
+    from pprint import pprint
+    for score_obj in topk:
+        pprint(score_obj)
         print()
         print()
 
@@ -564,27 +603,26 @@ def main():
     preference_vector = model.encode(preferences.description, convert_to_tensor=True) if preferences.description else None
     
     # Calculate suitability scores for all courses
-    courses_and_scores = []
+    score_objs = []
     for course in courses:
         score_obj = calculate_suitability(course=course, preferences=preferences, return_details=True)
-        courses_and_scores.append((course, score_obj))
+        score_objs.append(score_obj)
     
     # Get top 10 courses
-    courses_and_scores.sort(key=lambda x: x[1]["suitability_score"], reverse=True)
-    top_10 = courses_and_scores[:10]
+    score_objs.sort(key=lambda x: x["suitability_score"], reverse=True)
+    top_10 = score_objs[:10]
 
     # Update suitability scores with description similarity scores if needed
     if preference_vector is not None:
-        for i, (course, score_obj) in enumerate(top_10):
-            score_obj["suitability_score"] = incorporate_desc_similarity_scores(score_obj, preference_vector)
-            top_10[i] = (course, score_obj)  # Update the tuple with the modified score_obj
-        top_10.sort(key=lambda x: x[1]["suitability_score"], reverse=True)
+        for i, score_obj in enumerate(top_10):
+            top_10[i] = incorporate_desc_similarity_scores(score_obj, preference_vector)
+        top_10.sort(key=lambda x: x["suitability_score"], reverse=True)
 
     # Print the top 5 courses
     print("\nTop 5 Courses:")
     for score in top_10[:5]:
-        course_name = score[1]["course"].course_name
-        suitability = score[1]["suitability_score"]
+        course_name = score["course"].course_name
+        suitability = score["suitability_score"]
         print(f"{course_name}: {suitability:.4f}")
 
 if __name__ == "__main__":
