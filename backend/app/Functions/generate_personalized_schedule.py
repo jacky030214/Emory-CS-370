@@ -481,7 +481,7 @@ def list_to_Course(data: dict) -> Course:
         time = data.get("time", "MWTThF 12:00am-1:00am"),
     )
 
-def list_to_Preferences(data: dict) -> Preferences:
+def dict_to_Preferences(data: dict) -> Preferences:
     rmp_rating = data.get("rmp_rating", None)
     ger = data.get("ger", [])
     taken = data.get("taken", [])
@@ -506,7 +506,8 @@ def get_top_k_courses(all_schedules: list[dict], preferences: dict, k: int = 5, 
         taken_courses.extend(semester.get("classes", []))
     
     taken_courses = [list_to_Course(course) for course in taken_courses]
-    preferences = list_to_Preferences(preferences)
+    if isinstance(preferences, dict):
+        preferences = dict_to_Preferences(preferences)
 
     if hasattr(preferences, "taken") and isinstance(preferences.taken, list):
         for course in taken_courses:
