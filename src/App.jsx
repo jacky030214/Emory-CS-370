@@ -26,13 +26,16 @@ import {
   School as SchoolIcon,
   Person as PersonIcon,
   Logout as LogoutIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Brightness4 as DarkModeIcon,
+  Brightness7 as LightModeIcon
 } from '@mui/icons-material';
 
 // Import pages
 import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/Login_Page';
 import SignupPage from './pages/Signup_Page';
+import ScheduleCalendar from './pages/ScheduleCalendar';
 import axios from 'axios';
 
 // API 서비스 import
@@ -165,13 +168,13 @@ const CourseListPage = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
         setLoading(true);
-        // This assumes CourseAPI has a getAll method
-        const data = await CourseAPI.getAll();
+        const data = await CourseAPI.getAllCourses();
         setCourses(data);
         setLoading(false);
       } catch (err) {
@@ -189,6 +192,17 @@ const CourseListPage = () => {
 
   return (
     <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Available Courses</Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => navigate('/schedule')}
+          startIcon={<SchoolIcon />}
+        >
+          View Schedule
+        </Button>
+      </Box>
       {courses.length > 0 ? (
         courses.map((course, index) => (
           <Box key={index} sx={{ mb: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
@@ -196,7 +210,7 @@ const CourseListPage = () => {
               {course.name} ({course.course_id})
             </Typography>
             <Typography variant="body2">
-              {course.credit_hours} credits | Professor: {course.professor || 'TBA'}
+              {course.credit_hours} credits | Professor: {course.professor_name || course.professor || 'TBA'}
             </Typography>
             <Typography variant="body2" sx={{ mt: 1 }}>
               {course.description || 'No description available'}
@@ -238,7 +252,9 @@ const NavMenu = ({ mobileView = false, onClose = null }) => {
   
   const handleNavigation = (path) => {
     navigate(path);
-    if (onClose) onClose();
+    if (mobileView && onClose) {
+      onClose();
+    }
   };
   
   return (
@@ -318,7 +334,7 @@ const App = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
-  const open = Boolean(anchorEl);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   
   // Check if user is logged in on app load
   useEffect(() => {
@@ -357,6 +373,11 @@ const App = () => {
     window.location.href = '/login'; // Simple approach for logout
   };
   
+  // Handle theme toggle
+  const handleThemeToggle = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+  
   // Drawer width
   const drawerWidth = 240;
   
@@ -381,6 +402,54 @@ const App = () => {
       <NavMenu mobileView={true} onClose={handleDrawerToggle} />
     </Box>
   );
+
+  const theme = createTheme({
+    palette: {
+      mode: isDarkMode ? 'dark' : 'light',
+      primary: {
+        main: '#ff6b00',
+      },
+      secondary: {
+        main: '#03a9f4',
+      },
+      background: {
+        default: isDarkMode ? '#1a1a2e' : '#f5f5f5',
+        paper: isDarkMode ? '#1a1a2e' : '#ffffff',
+      },
+    },
+    typography: {
+      fontFamily: "'Roboto', 'Helvetica', 'Arial', sans-serif",
+      h4: {
+        fontWeight: 600,
+      },
+      h6: {
+        fontWeight: 500,
+      },
+    },
+    components: {
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+          },
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+          },
+        },
+      },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+          },
+        },
+      },
+    },
+  });
 
   return (
     <ThemeProvider theme={theme}>
@@ -446,13 +515,17 @@ const App = () => {
                     </Button>
                   </Box>
                   
+                  <IconButton color="inherit" onClick={handleThemeToggle}>
+                    {isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
+                  </IconButton>
+                  
                   <IconButton
                     onClick={handleProfileMenuOpen}
                     size="small"
                     sx={{ ml: 2 }}
-                    aria-controls={open ? 'account-menu' : undefined}
+                    aria-controls={anchorEl ? 'account-menu' : undefined}
                     aria-haspopup="true"
-                    aria-expanded={open ? 'true' : undefined}
+                    aria-expanded={anchorEl ? 'true' : undefined}
                   >
                     <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
                       {user.username ? user.username[0].toUpperCase() : user.email ? user.email[0].toUpperCase() : 'U'}
@@ -462,7 +535,7 @@ const App = () => {
                   <Menu
                     anchorEl={anchorEl}
                     id="account-menu"
-                    open={open}
+                    open={Boolean(anchorEl)}
                     onClose={handleProfileMenuClose}
                     onClick={handleProfileMenuClose}
                     PaperProps={{
@@ -577,24 +650,14 @@ const App = () => {
               
               <Route path="/schedule" element={
                 <ProtectedRoute>
-                  <Box p={4}>
-                    <Typography variant="h4" gutterBottom>
-                      Semester Schedule
-                    </Typography>
-                    <SchedulePage />
-                  </Box>
+                  <ScheduleCalendar />
                 </ProtectedRoute>
               } />
               
               {/* Future routes would be added here */}
               <Route path="/courses" element={
                 <ProtectedRoute>
-                  <Box p={4}>
-                    <Typography variant="h4" gutterBottom>
-                      Available Courses
-                    </Typography>
-                    <CourseListPage />
-                  </Box>
+                  <CourseListPage />
                 </ProtectedRoute>
               } />
               <Route path="/profile" element={
