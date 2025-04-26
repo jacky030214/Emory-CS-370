@@ -136,7 +136,7 @@ class Professor:
         self.rmp_rating = rmp_rating
 
 class Preferences:
-   def __init__(self, rmp_rating: str | float, ger: list[str], taken: str | list[str], campus: str, semester: str, description: str, times: list[str]):
+    def __init__(self, rmp_rating: str | float, ger: list[str], taken: str | list[str], campus: str, semester: str, description: str, times: list[str]):
         if isinstance(rmp_rating, str): assert rmp_rating in ["high", None], "rmp_rating must be 'high' or None"
         elif isinstance(rmp_rating, float) or isinstance(rmp_rating, int): assert 0 <= rmp_rating <= 5, "rmp_rating must be a float between 0 and 5"
         if not isinstance(taken, list): assert taken in ["high", "low", None], "taken must be 'high', 'low', or None or a list of taken"
@@ -154,6 +154,19 @@ class Preferences:
                 self.times.append(parse_course_time(time))
         else:
             self.times = None
+   
+    def to_dict(self):
+        return {
+            "rmp_rating": self.rmp_rating,
+            "ger": self.ger,
+            "taken": self.taken,
+            "campus": self.campus,
+            "semester": self.semester,
+            "description": self.description,
+            "times": self.times
+        }
+    def __repr__(self):
+        return json.dumps(self.to_dict(), indent=4)
 
 # TODO: Add semester selection to all functions 
 AmbiguousCourseError = ValueError("Course object must have either (course_id and section) or crn.")
@@ -165,7 +178,7 @@ def get_rmp_score(uri: str, db_name: str, collection_name: str, instructor_name:
     db = client[db_name]
     collection = db[collection_name]
     result = collection.find_one({"name": instructor_name})
-    return result.get("rating", 0) if result else 0
+    return result.get("rating", 2.5) if result else 2.5
 
 
 def data_loader(uri: str, db_name: str, collection_name: str) -> list[Course]:
@@ -183,7 +196,7 @@ def data_loader(uri: str, db_name: str, collection_name: str) -> list[Course]:
 
     courses = list(collection.find())
     course_objs = []
-    for course in courses:
+    for course in tqdm(courses):
         course = dict(course)
         if "requirement_designation" in course.keys():
             course["requirement_designation"] = course["requirement_designation"].split(" with ")
@@ -199,7 +212,7 @@ def data_loader(uri: str, db_name: str, collection_name: str) -> list[Course]:
                 course["course_description"] = course["course_title"] + "\n" + course["course_description"]
         rmp_score = 0
         if "instructor_name" in course.keys():
-            rmp_score = get_rmp_score(uri, db_name, collection_name, course["instructor_name"])
+            rmp_score = get_rmp_score(uri, db_name, "rmp_ratings", course["instructor_name"])
             
         course_obj = Course(
             course_id=course.get("course_code", "Failed To Retrieve"),
@@ -365,8 +378,10 @@ def generate_all_desc_vectors(uri: str, db_name: str, collection_name: str):
         elif "course_description" not in course.keys():
             counter += 1
         if counter == 10:
+            print("Description vectors already exist for 10 random courses. Skipping generation.")
             return
 
+    print(f"Generating description vectors for {collection_name}...")
     # generate description vectors for each course
     for course in tqdm(courses, desc="Generating description vectors..."):
         course = dict(course)
@@ -476,7 +491,7 @@ def list_to_Course(data: dict) -> Course:
         professor = Professor(
             name=data.get("professor", {}).get("name", "undef"),
             email=data.get("professor", {}).get("email", "undef"),
-            rmp_rating=data.get("professor", {}).get("rmp_rating", 0)
+            rmp_rating=data.get("professor", {}).get("rmp_rating", 2.5)
         ),
         time = data.get("time", "MWTThF 12:00am-1:00am"),
     )
@@ -561,16 +576,18 @@ def get_top_k_courses(all_schedules: list[dict], preferences: dict, k: int = 5, 
     return top_k[:k]
 
 def main():
-    print("gen1")
+    print("Checking if course description vectors need to be created for all_courses...")
     generate_all_desc_vectors(uri="mongodb://localhost:27017/", db_name="my_database", collection_name="all_courses")
-    print("gen2")
-    generate_all_desc_vectors(uri="mongodb://localhost:27017/", db_name="my_database", collection_name="fall_2025")
-    print("gen3")
-    generate_all_desc_vectors(uri="mongodb://localhost:27017/", db_name="my_database", collection_name="spring_2025")
-    # FALL 2024
-    all_schedules = [{"year":0,"semester":"Fall","classes":[{"class_id":"Math275","class_name":"Honors Linear Algebra","recurring":"fall","credit_hours":4,"prereqs":"AP Calculus BC","requirement_designation":[],"campus":"EM","class_desc":"This course is the first half of the advanced math introductory sequence. It covers the basics of linear algebra: vector spaces, linear transformations, determinants, and eigenvalues, with an emphasis on mathematical rigor. This class is for freshmen who scored a 5 on the Calculus AP BC exam.","timeslot":None},{"class_id":"Math111","class_name":"Calculus I","recurring":"fall/spring","credit_hours":3,"prereqs":[],"requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Limits, continuity, derivatives, antiderivatives, the definite integral.","timeslot":None}],"total_credit_hours":7},{"year":1,"semester":"Spring","classes":[{"class_id":"Math210","class_name":"Advanced Calculus for Data Sciences","recurring":"fall/spring","credit_hours":4,"prereqs":"Math111 or Math115 or Math119","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"This course is a short treatment of?MATH 112?and?211?with a lab component. It is not appropriate for students who have taken?MATH 211. Topics include: advanced integration, Taylor series; and multivariable differentiation, optimization and integration; and applications to statistics and science.","timeslot":None},{"class_id":"Math112","class_name":"Calculus II","recurring":"fall/spring","credit_hours":3,"prereqs":"Math111 or Math115 or Math119","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Techniques of integration, exponential and logarithm functions, sequences and series, polar coordinates.","timeslot":None}],"total_credit_hours":7},{"year":1,"semester":"Fall","classes":[{"class_id":"Math211","class_name":"Advanced Calculus (Multivariable)","recurring":"fall/spring","credit_hours":3,"prereqs":"Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Vectors; multivariable functions; partial derivatives; multiple integrals; vector and scalar fields; Green's and Stokes' theorems; divergence theorem.","timeslot":None},{"class_id":"Math212","class_name":"Differential Equations","recurring":"fall/spring","credit_hours":3,"prereqs":"Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"This is a standard first semester Differential Equations course which covers first and second-order differential equations and systems of differential equations, with an emphasis placed on developing techniques for solving differential equations.","timeslot":None},{"class_id":"Math221","class_name":"Linear Algebra","recurring":"fall/spring","credit_hours":4,"prereqs":"Math111 or Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Systems of linear equations, matrices, determinants, linear transformations, eigenvalues and eigenvectors, least-squares.","timeslot":None},{"class_id":"Math250","class_name":"Foundations of Mathematics","recurring":"fall/spring","credit_hours":3,"prereqs":"Math111; Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"An introduction to theoretical mathematics. Logic and proofs, operations on sets, induction, relations, functions.","timeslot":None}],"total_credit_hours":13},{"year":2,"semester":"Spring","classes":[],"total_credit_hours":0},{"year":2,"semester":"Fall","classes":[],"total_credit_hours":0},{"year":3,"semester":"Spring","classes":[],"total_credit_hours":0},{"year":3,"semester":"Fall","classes":[],"total_credit_hours":0},{"year":4,"semester":"Spring","classes":[],"total_credit_hours":0}]
 
-    topk = get_top_k_courses(all_schedules, Preferences(
+    # sample schedule from backtracking algorithm
+    all_schedules = [{"year":0,"semester":"Fall","classes":[{"class_id":"Math275","class_name":"Honors Linear Algebra","recurring":"fall","credit_hours":4,"prereqs":"AP Calculus BC","requirement_designation":[],"campus":"EM","class_desc":"This course is the first half of the advanced math introductory sequence. It covers the basics of linear algebra: vector spaces, linear transformations, determinants, and eigenvalues, with an emphasis on mathematical rigor. This class is for freshmen who scored a 5 on the Calculus AP BC exam.","timeslot":None},{"class_id":"Math111","class_name":"Calculus I","recurring":"fall/spring","credit_hours":3,"prereqs":[],"requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Limits, continuity, derivatives, antiderivatives, the definite integral.","timeslot":None}],"total_credit_hours":7},{"year":1,"semester":"Spring","classes":[{"class_id":"Math210","class_name":"Advanced Calculus for Data Sciences","recurring":"fall/spring","credit_hours":4,"prereqs":"Math111 or Math115 or Math119","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"This course is a short treatment of?MATH 112?and?211?with a lab component. It is not appropriate for students who have taken?MATH 211. Topics include: advanced integration, Taylor series; and multivariable differentiation, optimization and integration; and applications to statistics and science.","timeslot":None},{"class_id":"Math112","class_name":"Calculus II","recurring":"fall/spring","credit_hours":3,"prereqs":"Math111 or Math115 or Math119","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Techniques of integration, exponential and logarithm functions, sequences and series, polar coordinates.","timeslot":None}],"total_credit_hours":7},{"year":1,"semester":"Fall","classes":[{"class_id":"Math211","class_name":"Advanced Calculus (Multivariable)","recurring":"fall/spring","credit_hours":3,"prereqs":"Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Vectors; multivariable functions; partial derivatives; multiple integrals; vector and scalar fields; Green's and Stokes' theorems; divergence theorem.","timeslot":None},{"class_id":"Math212","class_name":"Differential Equations","recurring":"fall/spring","credit_hours":3,"prereqs":"Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"This is a standard first semester Differential Equations course which covers first and second-order differential equations and systems of differential equations, with an emphasis placed on developing techniques for solving differential equations.","timeslot":None},{"class_id":"Math221","class_name":"Linear Algebra","recurring":"fall/spring","credit_hours":4,"prereqs":"Math111 or Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"Systems of linear equations, matrices, determinants, linear transformations, eigenvalues and eigenvectors, least-squares.","timeslot":None},{"class_id":"Math250","class_name":"Foundations of Mathematics","recurring":"fall/spring","credit_hours":3,"prereqs":"Math111; Math112","requirement_designation":"Quantitative Reasoning","campus":"EM","class_desc":"An introduction to theoretical mathematics. Logic and proofs, operations on sets, induction, relations, functions.","timeslot":None}],"total_credit_hours":13},{"year":2,"semester":"Spring","classes":[],"total_credit_hours":0},{"year":2,"semester":"Fall","classes":[],"total_credit_hours":0},{"year":3,"semester":"Spring","classes":[],"total_credit_hours":0},{"year":3,"semester":"Fall","classes":[],"total_credit_hours":0},{"year":4,"semester":"Spring","classes":[],"total_credit_hours":0}]
+    print("Sample schedule used for testing:", all_schedules)
+    print()
+
+    import time    
+    time.sleep(1)
+
+    preferences = Preferences(
         rmp_rating="high",
         ger=[],
         taken=["CS170", "CS171"],
@@ -578,16 +595,22 @@ def main():
         semester="fall",
         description="I want to learn about data structures and algorithms using Java.",
         times = ["TTh 1:00pm-2:00pm"]
-    ), k=5)
+    )
+    print("Example Preferences:", preferences)
+    print()
+
+    print("Getting top 3 recommended courses based on current schedule and preferences...")
+    topk = get_top_k_courses(all_schedules, preferences, k=3)
 
     from pprint import pprint
-    for score_obj in topk:
+    for i, score_obj in enumerate(topk):
+        print(f"----------------------------Course {i+1}---------------------------------")
         pprint(score_obj)
         print()
         print()
 
-
     exit()
+
     print("Retrieving course data...")
     courses = data_loader(uri="mongodb://localhost:27017/", db_name="my_database", collection_name="Class")
     print("Course data retrieved.")

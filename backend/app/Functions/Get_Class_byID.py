@@ -23,7 +23,7 @@ def get_class_by_id(class_id, uri="mongodb://localhost:27017/", db_name="my_data
     classes_collection = db["Class"]
     
     # Retrieve the document where "course_id" matches the given course_id
-    doc = classes_collection.find_one({"class_id": class_id})
+    doc = classes_collection.find_one({"course_code": class_id})
     
     # Close the MongoDB connection
     client.close()
